@@ -1,0 +1,21 @@
+/* src/styles/globals.css */
+
+/* ... (Otros estilos globales que ya tengas) ... */
+
+/* AGREGAR AQUÍ LAS VARIABLES GLOBALES */
+:root {
+    --color-background: #12121e;  /* Fondo muy oscuro / casi negro */
+    --color-card: #1e1e2d;        /* Fondo de la caja de login */
+    --color-primary: #dc3545;     /* Rojo de acción/botón (Menú) */
+    --color-text: #ffffff;        /* Texto principal blanco */
+    --color-label: #cccccc;       /* Texto de etiquetas gris claro */
+    --color-input-bg: #27293d;    /* Fondo de los campos de input */
+}
+
+/* También es común resetear el estilo del body aquí */
+body {
+    background-color: var(--color-background);
+    color: var(--color-text);
+    margin: 0;
+    padding: 0;
+}
