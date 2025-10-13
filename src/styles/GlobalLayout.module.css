@@ -1,0 +1,13 @@
+/* src/styles/GlobalLayout.module.css */
+
+.layoutContainer {
+    display: flex;
+    min-height: 100vh;
+    background-color: #12121e; /* Fondo oscuro */
+    color: #f0f0f0; /* Color de texto */
+}
+
+.mainContent {
+    flex-grow: 1;
+    padding: 40px;
+}
