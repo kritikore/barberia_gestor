@@ -1,0 +1,133 @@
+/* src/styles/Sidebar.module.css */
+
+.sidebar {
+    /* Define el ancho y el color de fondo oscuro del menú */
+    width: 280px; 
+    background-color: #1a1a2e; /* Un color oscuro profundo, ideal para el ambiente */
+    color: var(--color-text); /* Asumiendo que var(--color-text) es blanco o gris claro */
+    padding: 20px 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between; /* Empuja el footer (usuario) hacia abajo */
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.3);
+    min-height: 100vh; /* Asegura que cubra toda la altura de la vista */
+    position: sticky; /* Fija el sidebar si el contenido principal es muy largo */
+    top: 0;
+    left: 0;
+}
+
+.logoSection {
+    text-align: center;
+    margin-bottom: 30px;
+    padding: 0 20px;
+}
+
+.logoSection h1 {
+    font-size: 1.6em;
+    color: #e91e63; /* Usa el color primario (Rojo/Rosa) para el nombre */
+    margin-bottom: 5px;
+}
+
+.logoSection p {
+    font-size: 0.9em;
+    color: #888; /* Gris tenue para el subtítulo */
+}
+
+/* Estilos de la lista de navegación */
+.navigation ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.navItem {
+    display: flex;
+    align-items: center;
+    padding: 12px 20px;
+    color: var(--color-text);
+    text-decoration: none;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.navItem:hover {
+    background-color: #27273f; /* Un gris más claro al pasar el mouse */
+}
+
+/* Estado Activo (Módulo Seleccionado) */
+.navItem.active {
+    background-color: #e91e63; /* El color primario (Rojo/Rosa) para resaltar */
+    font-weight: bold;
+    color: #fff; /* Texto blanco en estado activo */
+    /* Efecto visual de resaltado */
+    border-radius: 0 8px 8px 0; 
+    margin-right: 10px; 
+}
+
+.navItem .icon {
+    font-size: 1.2em;
+    margin-right: 15px;
+    width: 25px; 
+    text-align: center;
+}
+
+/* Sección de Usuario (Footer) */
+.userSection {
+    padding: 20px;
+    border-top: 1px solid #333; /* Separador sutil */
+}
+
+.userInfo {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.userAvatar {
+    width: 40px;
+    height: 40px;
+    background-color: #e91e63;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: bold;
+    font-size: 1.2em;
+    margin-right: 15px;
+    color: #fff;
+}
+
+.userName {
+    margin: 0;
+    font-weight: bold;
+    color: var(--color-text);
+}
+
+.userEmail {
+    margin: 0;
+    font-size: 0.8em;
+    color: #888;
+}
+
+.logoutButton {
+    width: 100%;
+    background: none;
+    border: none;
+    color: #888; /* Color gris para el botón inactivo */
+    padding: 10px;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.logoutButton:hover {
+    color: #e91e63; /* El color primario al pasar el mouse */
+}
+
+.logoutButton .icon {
+    font-size: 1.2em;
+    margin-right: 15px;
+    width: 25px;
+    text-align: center;
+}
