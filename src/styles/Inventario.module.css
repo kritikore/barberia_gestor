@@ -1,0 +1,256 @@
+/* src/styles/Inventario.module.css */
+
+/* --- Estilos Generales de la Rejilla y Tarjetas --- */
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 30px;
+    margin-top: 30px;
+}
+
+.productoCard {
+    background-color: #27273f; 
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+}
+
+/* --- Encabezado de la Tarjeta de Producto --- */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.nombre {
+    font-size: 1.3em;
+    font-weight: bold;
+    color: #fff;
+}
+
+.marca {
+    font-size: 0.9em;
+    color: #aaa;
+    margin-bottom: 10px;
+}
+
+/* --- Botones de Acción (Editar/Eliminar) --- */
+.acciones {
+    display: flex;
+    gap: 8px; /* Espacio entre los botones */
+}
+
+.actionButton {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    transition: transform 0.1s;
+    font-size: 1.1em; /* Ajusta el tamaño del icono */
+    line-height: 1; /* Asegura que el icono esté centrado verticalmente */
+    /* Los iconos de React Icons ya son SVG, podemos estilizarlos directamente */
+}
+
+/* Estilo para el icono de editar (Azul) */
+.editIcon {
+    color: #3f51b5; /* Azul primario */
+}
+
+/* Estilo para el icono de eliminar (Rojo) */
+.deleteIcon {
+    color: #f44336; /* Rojo de Sin Stock/Eliminar */
+}
+
+.actionButton:hover {
+    transform: scale(1.1);
+}
+
+
+/* --- Etiquetas (En Stock, Cuidado Capilar, etc.) --- */
+.etiquetas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 15px;
+}
+
+.etiquetas span {
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 0.8em;
+    font-weight: 500;
+}
+
+.stockNormal {
+    background-color: #2e7d32; 
+    color: #fff;
+}
+
+.stockBajo {
+    background-color: #ff9800; 
+    color: #1a1a2e;
+}
+
+.tag {
+    background-color: #3f51b5; 
+    color: #fff;
+}
+
+.descripcion {
+    font-size: 0.9em;
+    color: #ccc;
+    flex-grow: 1; 
+    margin-bottom: 20px;
+}
+
+/* --- Footer (Cantidad, Precio y Botón) --- */
+.footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 15px;
+    border-top: 1px solid #333;
+}
+
+.dato {
+    display: flex;
+    flex-direction: column;
+    margin-right: 20px;
+}
+
+.label {
+    font-size: 0.8em;
+    color: #aaa;
+    margin-bottom: 2px;
+}
+
+.valor {
+    font-size: 1.1em;
+    font-weight: bold;
+    color: #fff;
+}
+
+.agregarButton {
+    background-color: #e91e63; 
+    color: #fff;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.2s;
+}
+
+.agregarButton:hover {
+    background-color: #c2185b;
+}
+
+/* --- Encabezado de la Página de Inventario (Título + Botón Añadir) --- */
+.headerInventario {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+/* --- GRID DE MÉTRICAS (4 columnas) --- */
+.metricGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); /* Ajustado para pantallas más pequeñas */
+    gap: 20px;
+    margin-bottom: 40px;
+}
+
+.metricCard {
+    background-color: #27273f;
+    border-radius: 8px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.metricIcon {
+    font-size: 2em; /* Tamaño del icono */
+    margin-right: 15px;
+    padding: 10px;
+    border-radius: 50%;
+    display: flex; /* Centra el icono */
+    align-items: center;
+    justify-content: center;
+    color: #fff; /* Color del icono dentro del círculo */
+}
+
+/* Colores de Fondo Específicos para MetricCard Icono */
+.productos .metricIcon { background-color: #3f51b5; } /* Azul */
+.bajo .metricIcon { background-color: #ff9800; } /* Naranja */
+.sin_stock .metricIcon { background-color: #f44336; } /* Rojo */
+.valor .metricIcon { background-color: #4caf50; } /* Verde */
+
+
+.metricTitle {
+    font-size: 0.9em;
+    color: #ccc;
+    margin-bottom: 2px;
+}
+
+.metricValue {
+    font-size: 1.6em;
+    font-weight: bold;
+    margin: 0;
+}
+
+/* --- BARRA DE FILTROS --- */
+.filterBar {
+    background-color: #27273f;
+    padding: 20px;
+    border-radius: 8px;
+    display: flex;
+    flex-wrap: wrap; /* Permite que los elementos salten de línea en pantallas pequeñas */
+    gap: 15px;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.filterBar input, .filterBar select {
+    padding: 10px 15px;
+    border: 1px solid #444;
+    background-color: #1e1e2d;
+    color: #fff;
+    border-radius: 6px;
+    font-size: 0.95em;
+    -webkit-appearance: none; /* Elimina estilos por defecto de select/input */
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ccc'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E"); /* Flecha personalizada */
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 16px;
+}
+
+.filterBar input {
+    flex-grow: 1; 
+    min-width: 200px; /* Asegura un ancho mínimo para el input de búsqueda */
+}
+
+.filterButton {
+    padding: 10px 15px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.2s;
+}
+
+.clearButton {
+    background: none;
+    color: #e91e63; /* Color primario */
+    border: 1px solid #e91e63;
+    transition: background-color 0.2s;
+}
+
+.clearButton:hover {
+    background-color: #e91e631a; 
+}
