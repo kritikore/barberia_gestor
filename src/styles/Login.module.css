@@ -1,0 +1,93 @@
+/* src/styles/Login.module.css */
+
+/* --- Variables de Color (Basadas en el Dashboard oscuro) --- */
+/* se elimino el sector root 
+
+/* --- Contenedor Global y Centrado --- */
+.loginContainer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: var(--color-background);
+    font-family: Arial, sans-serif; /* Puedes ajustar la fuente si ya tienen una */
+}
+
+/* --- Caja Principal del Formulario --- */
+.loginBox {
+    background-color: var(--color-card);
+    padding: 45px;
+    border-radius: 12px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.7);
+    width: 100%;
+    max-width: 400px; /* Tamaño fijo para el formulario */
+    color: var(--color-text);
+    text-align: center;
+}
+
+.loginBox h1 {
+    color: var(--color-primary);
+    margin-bottom: 5px;
+    font-size: 2em;
+}
+
+.loginBox h2 {
+    color: var(--color-label);
+    margin-bottom: 30px;
+    font-size: 1.2em;
+}
+
+/* --- Campos del Formulario --- */
+.formGroup {
+    text-align: left;
+    margin-bottom: 20px;
+}
+
+.formGroup label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+    color: var(--color-label);
+}
+
+.loginInput {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid var(--color-input-bg);
+    border-radius: 6px;
+    background-color: var(--color-input-bg);
+    color: var(--color-text);
+    font-size: 16px;
+    box-sizing: border-box; /* Asegura que el padding no cambie el ancho */
+}
+
+/* --- Botón de Acción --- */
+.loginButton {
+    width: 100%;
+    padding: 12px;
+    margin-top: 30px;
+    background-color: var(--color-primary);
+    color: var(--color-text);
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 1em;
+    transition: background-color 0.3s;
+}
+
+.loginButton:hover:not(:disabled) {
+    background-color: #a72835; /* Rojo más oscuro al pasar el mouse */
+}
+
+.loginButton:disabled {
+    background-color: #6c757d; /* Gris si está cargando */
+    cursor: not-allowed;
+}
+
+/* --- Mensaje de Error --- */
+.errorMessage {
+    color: var(--color-primary);
+    margin-top: 15px;
+    font-weight: bold;
+}
