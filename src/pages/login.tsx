@@ -13,8 +13,8 @@ interface LoginFormState {
 
 const LoginPage: NextPage = () => {
   // Inicialización del hook de enrutamiento
-  const router = useRouter(); 
-  
+  const router = useRouter(); 
+  
   // Estado del formulario y la UI
   const [formState, setFormState] = useState<LoginFormState>({
     email: '',
@@ -38,18 +38,18 @@ const LoginPage: NextPage = () => {
     setError(null);
     setIsLoading(true);
 
-    // =========================================================
-    // ✅ MODIFICACIÓN TEMPORAL PARA ACCESO A DESARROLLO (QA)
-    // Usar 'dev@gestor.com' y 'access' para saltar el API fallido (404)
-    // =========================================================
-    if (formState.email === 'dev@gestor.com' && formState.password === 'access') {
-        console.log("Acceso de Desarrollo concedido. Redirigiendo a Inventario.");
-        // Redirige directamente al panel del Gestor (Inventario)
-        router.push('/inventario'); 
-        setIsLoading(false);
-        return; // Detiene la ejecución para no llamar al API
-    }
-    // =========================================================
+    // =========================================================
+    // ✅ LÓGICA DE ACCESO DE DESARROLLO (MANTENIDA TEMPORALMENTE)
+    // Usar 'dev@gestor.com' y 'access' para saltar el API fallido (404)
+    // =========================================================
+    if (formState.email === 'dev@gestor.com' && formState.password === 'access') {
+        console.log("Acceso de Desarrollo concedido. Redirigiendo a Inventario.");
+        // Redirige directamente al panel del Gestor (Inventario)
+        router.push('/inventario'); 
+        setIsLoading(false);
+        return; // Detiene la ejecución para no llamar al API
+    }
+    // =========================================================
 
     try {
       // ----------------------------------------------------
@@ -78,7 +78,7 @@ const LoginPage: NextPage = () => {
       } else {
          throw new Error('Rol de usuario no reconocido.');
       }
-      
+      
     } catch (err: any) {
       // Muestra el error de autenticación al usuario
       setError(err.message);
@@ -92,10 +92,10 @@ const LoginPage: NextPage = () => {
     <div className={styles.loginContainer}>
       {/* Usa la clase de la caja para el estilo oscuro */}
       <div className={styles.loginBox}>
-        
+        
         <h1>💈 Barbería Gestor</h1>
         <h2>Panel de Control</h2>
-        
+        
         <form onSubmit={handleSubmit}>
           {/* Campo de Email/Usuario */}
           <div className={styles.formGroup}>
@@ -131,9 +131,9 @@ const LoginPage: NextPage = () => {
           {error && <p className={styles.errorMessage}>{error}</p>}
 
           {/* Botón de Enviar */}
-          <button 
-            type="submit" 
-            className={styles.loginButton} 
+          <button 
+            type="submit" 
+            className={styles.loginButton} 
             disabled={isLoading || !formState.email || !formState.password} // Deshabilita si está cargando o campos vacíos
           >
             {isLoading ? 'Accediendo...' : 'Acceder'}
