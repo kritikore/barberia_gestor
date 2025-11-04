@@ -1,0 +1,105 @@
+/* src/styles/Clientes.module.css - MIGRADO A VARIABLES CSS URBANAS/INDUSTRIALES */
+
+/* --- Estilos para la Tabla y su Contenedor --- */
+.tableContainer {
+    background-color: var(--color-card); /* 🔑 Fondo de Contenedor: #2A2A2A */
+    border-radius: 8px;
+    padding: 20px 0;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.clientesTable {
+    width: 100%;
+    border-collapse: collapse;
+    color: var(--color-text); /* 🔑 Texto principal: #F8F9FA */
+}
+
+.clientesTable th {
+    padding: 15px 20px;
+    text-align: left;
+    color: var(--color-label); /* 🔑 Texto secundario: #CCCCCC */
+    font-size: 0.9em;
+    font-weight: bold;
+    border-bottom: 2px solid #333;
+    /* Estilo específico para la columna de acciones */
+    &:last-child {
+        text-align: center;
+    }
+}
+
+.clientesTable td {
+    padding: 12px 20px;
+    text-align: left;
+    color: var(--color-text); /* 🔑 Texto principal: #F8F9FA */
+    font-size: 0.95em;
+    border-bottom: 1px solid #333;
+}
+
+.clientesTable tbody tr:hover {
+    /* Un hover suave sobre el color de tarjeta */
+    background-color: #38384d; 
+}
+
+/* Estilos de las Acciones en la Fila */
+.tableActionCell {
+    text-align: center;
+}
+
+.viewButton {
+    background-color: var(--color-primary); /* 🔑 Azul Primario: #0D6EFD */
+    color: white;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85em;
+    font-weight: 500;
+    transition: background-color 0.2s;
+}
+
+.viewButton:hover {
+    background-color: #0c5bb5; /* Tono más oscuro del azul para hover */
+}
+
+/* --- Barra de Búsqueda y Filtros --- */
+.filterBar {
+    background-color: var(--color-card); /* 🔑 Fondo de Barra de Filtros: #2A2A2A */
+    padding: 20px;
+    border-radius: 8px;
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    margin-bottom: 30px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.filterBar input {
+    flex-grow: 1; /* Input de búsqueda más grande */
+}
+
+.filterBar input, .filterBar select {
+    padding: 10px 15px;
+    border: 1px solid #444;
+    background-color: var(--color-input-bg); /* 🔑 Fondo de Input: #1C1C1C */
+    color: var(--color-text); /* 🔑 Texto principal: #F8F9FA */
+    border-radius: 6px;
+    font-size: 0.95em;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+}
+
+.clearButton {
+    background: none;
+    color: var(--color-accent); /* 🔑 Amarillo Mostaza: #F5C542 */
+    border: 1px solid var(--color-accent);
+    padding: 10px 15px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.2s;
+}
+
+.clearButton:hover {
+    background-color: #F5C5421a; /* Fondo ligero al pasar el ratón */
+}

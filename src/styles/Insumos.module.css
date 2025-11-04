@@ -1,0 +1,78 @@
+/* src/styles/Insumos.module.css */
+
+.grid {
+    display: grid;
+    /* 3 columnas en escritorio, 2 en tablet, 1 en móvil */
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 25px;
+}
+
+.insumoCard {
+    background-color: var(--color-card, #2A2A2A);
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    border: 1px solid #444;
+}
+
+.cardHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.cardHeader h3 {
+    font-size: 1.3em;
+    font-weight: 600;
+    color: var(--color-text, #F8F9FA);
+}
+
+/* Botón de 'Actualizar' (lápiz) */
+.updateButton {
+    background: none;
+    border: none;
+    color: var(--color-primary, #0D6EFD); /* Azul Primario */
+    font-size: 1.1em;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+.updateButton:hover {
+    color: #fff;
+}
+
+/* --- Barra de Progreso --- */
+.progressBarContainer {
+    width: 100%;
+    background-color: var(--color-background, #1C1C1C);
+    border-radius: 5px;
+    height: 15px;
+    overflow: hidden;
+    margin-bottom: 10px;
+}
+
+.progressBarFill {
+    height: 100%;
+    border-radius: 5px;
+    /* Color base (Azul Primario) */
+    background-color: var(--color-primary, #0D6EFD); 
+    transition: width 0.5s ease;
+}
+
+/* 🔑 Colores dinámicos para la barra */
+.fillWarning {
+    /* Amarillo Acento para stock bajo (ej. < 30%) */
+    background-color: var(--color-accent, #F5C542);
+}
+
+.fillDanger {
+    /* Rojo Peligro para stock crítico (ej. < 10%) */
+    background-color: var(--color-danger, #DC3545);
+}
+
+.percentageText {
+    font-size: 1.2em;
+    font-weight: bold;
+    color: var(--color-text, #F8F9FA);
+    text-align: center;
+}

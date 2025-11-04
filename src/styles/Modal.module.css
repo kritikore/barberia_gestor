@@ -1,0 +1,129 @@
+/* src/styles/Modal.module.css - Estilo Urbano/Industrial */
+
+.modalBackdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+}
+
+.modalContent {
+    background-color: var(--color-card, #2A2A2A);
+    color: var(--color-text, #F8F9FA);
+    border-radius: 8px;
+    padding: 25px;
+    width: 100%;
+    max-width: 600px; /* Ancho del modal */
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
+    border: 1px solid #444;
+}
+
+.modalHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #444;
+    padding-bottom: 15px;
+    margin-bottom: 20px;
+}
+
+.modalHeader h2 {
+    margin: 0;
+    font-size: 1.5em;
+    color: var(--color-accent, #F5C542); /* Color de acento (Amarillo) */
+}
+
+.closeButton {
+    background: none;
+    border: none;
+    color: var(--color-label, #CCCCCC);
+    font-size: 1.5em;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+.closeButton:hover {
+    color: var(--color-danger, #DC3545);
+}
+
+.formGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.formGroup {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 15px;
+}
+
+.formGroup label {
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: var(--color-label, #CCCCCC);
+}
+
+.formGroup input,
+.formGroup select {
+    padding: 10px 15px;
+    border: 1px solid #444;
+    background-color: var(--color-input-bg, #1C1C1C);
+    color: var(--color-text, #F8F9FA);
+    border-radius: 6px;
+    font-size: 1em;
+}
+
+.formActions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #444;
+}
+
+.formActions button {
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 0.9em;
+    transition: all 0.2s;
+}
+
+.cancelButton {
+    background: none;
+    border: 1px solid var(--color-label, #CCCCCC);
+    color: var(--color-label, #CCCCCC);
+}
+.cancelButton:hover {
+    background-color: #444;
+}
+
+.submitButton {
+    background-color: var(--color-primary, #0D6EFD); /* Azul Primario */
+    color: white;
+    border: none;
+}
+.submitButton:hover {
+    background-color: #0c5bb5;
+}
+.submitButton:disabled {
+    background-color: #555;
+    cursor: not-allowed;
+}
+
+.errorMessage {
+    color: var(--color-danger, #DC3545);
+    background-color: rgba(220, 53, 69, 0.1);
+    padding: 10px;
+    border-radius: 6px;
+    margin-bottom: 15px;
+    text-align: center;
+}

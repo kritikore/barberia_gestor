@@ -1,10 +1,12 @@
-/* src/styles/GlobalLayout.module.css */
+/* src/styles/GlobalLayout.module.css - CÓDIGO CORREGIDO CON VARIABLES */
 
 .layoutContainer {
     display: flex;
     min-height: 100vh;
-    background-color: #12121e; /* Fondo oscuro */
-    color: #f0f0f0; /* Color de texto */
+    /* 🔑 Fondo oscuro: Usamos la variable global #1C1C1C */
+    background-color: var(--color-background); 
+    /* 🔑 Color de texto: Usamos la variable global #F8F9FA */
+    color: var(--color-text); 
 }
 
 .mainContent {

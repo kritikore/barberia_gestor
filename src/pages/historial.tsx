@@ -19,8 +19,6 @@ const ConfiguracionPage: NextPage = () => {
             {/* ✅ LAYOUT CONTENEDOR (usando la clase del CSS Module) */}
             <div className={styles.layoutContainer}> 
                 
-                <Sidebar currentModule={moduleName} />
-                
                 {/* ✅ CONTENIDO PRINCIPAL (usando la clase del CSS Module) */}
                 <main className={styles.mainContent}> 
                     <h1>⚙️ {moduleName}</h1>

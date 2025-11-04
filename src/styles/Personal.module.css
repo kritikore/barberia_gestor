@@ -1,0 +1,111 @@
+/* src/styles/Personal.module.css */
+/* ... (Añade aquí los estilos de .metricCard, .filterBar, etc., 
+         puedes copiar y adaptar los de Inventario.module.css) ... */
+
+/* Estilos específicos para la Tarjeta de Barbero (BarberCard) */
+.barberCard {
+    background-color: var(--color-card, #2A2A2A);
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    border: 1px solid #444;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.cardHeader {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background-color: var(--color-accent, #F5C542);
+    color: var(--color-background, #1C1C1C);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5em;
+    font-weight: bold;
+}
+
+.headerInfo h3 {
+    font-size: 1.3em;
+    font-weight: 600;
+    color: var(--color-text, #F8F9FA);
+}
+
+.headerActions {
+    margin-left: auto;
+    display: flex;
+    gap: 10px;
+}
+
+.actionButton {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.1em;
+    transition: color 0.2s;
+}
+.editIcon { color: var(--color-primary, #0D6EFD); }
+.deleteIcon { color: var(--color-danger, #DC3545); }
+.actionButton:hover { transform: scale(1.1); }
+
+.tags {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.tag {
+    padding: 4px 10px;
+    border-radius: 5px;
+    font-size: 0.8em;
+    font-weight: 600;
+    background-color: #444;
+}
+.tagStatusActive {
+    background-color: #28a745; /* Verde */
+    color: #fff;
+}
+.tagStatusInactive {
+    background-color: #6c757d; /* Gris */
+    color: #fff;
+}
+.tagPosition {
+    background-color: var(--color-accent, #F5C542); /* Amarillo */
+    color: var(--color-background, #1C1C1C);
+}
+
+.detailsGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    font-size: 0.9em;
+    color: var(--color-label, #CCCCCC);
+}
+.detailsGrid span { display: flex; align-items: center; gap: 8px; }
+
+.statsFooter {
+    display: flex;
+    justify-content: space-around;
+    padding-top: 15px;
+    margin-top: 15px;
+    border-top: 1px solid #444;
+    text-align: center;
+}
+.statsFooter .stat h4 {
+    font-size: 0.9em;
+    color: var(--color-label, #CCCCCC);
+    margin-bottom: 5px;
+}
+.statsFooter .stat p {
+    font-size: 1.4em;
+    font-weight: bold;
+    color: var(--color-text, #F8F9FA);
+}
