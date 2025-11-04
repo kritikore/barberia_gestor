@@ -1,0 +1,33 @@
+/* src/styles/Layout.module.css */
+
+.floatingMenuButton {
+    /* 🔑 Posicionamiento: CLAVE para que flote */
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    z-index: 99999; /* Máximo z-index posible */
+    
+    /* Colores de debug: ROJO contra el fondo */
+    background-color: #FF0000; 
+    color: white; 
+    
+    border: 3px solid white; /* Borde visible */
+    border-radius: 50%; /* Lo hacemos circular para que destaque */
+    padding: 15px; 
+    font-size: 1.5em; 
+    cursor: pointer;
+    box-shadow: 0 0 20px rgba(255, 0, 0, 0.7); /* Sombra roja llamativa */
+    transition: all 0.2s;
+    
+    /* Centramos el ícono */
+    height: 60px;
+    width: 60px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.floatingMenuButton:hover {
+    background-color: #CC0000;
+    transform: scale(1.1);
+}

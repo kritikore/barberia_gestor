@@ -1,115 +1,122 @@
-// src/pages/inventario/index.tsx
+// src/pages/inventario/index.tsx (CORREGIDO FINAL)
 
-import React from 'react'; 
+import React, { useState, useEffect } from 'react';
 import { NextPage } from 'next';
 import Head from 'next/head';
 
-// Importaciones de iconos de React Icons
+// 🔑 CORRECCIÓN 1: Eliminamos la importación de Sidebar y GlobalLayout
+// import Sidebar from '@/components/Sidebar';
+// import layoutStyles from '@/styles/GlobalLayout.module.css';
+
+// Importamos los componentes que SÍ van en esta página
+import MetricCard from '@/components/MetricCard'; 
+import ProductoCard from '@/components/ProductoCard'; // (Asegúrate de que el nombre del archivo coincida)
+import AddProductModal from '@/components/AddProductoModal'; // (Asegúrate de que el nombre del archivo coincida)
+import EditProductModal from '@/components/EditProductModal';
+import AddStockModal from '@/components/AddStockModal';
+import { NextApiRequest, NextApiResponse } from 'next';
+import { db } from '@/lib/db'; // Asegúrate de que tu conexión a la DB esté en src/lib/db.ts
+
+import cardStyles from '@/styles/Inventario.module.css';
 import { FaBox, FaExclamationTriangle, FaTimesCircle, FaDollarSign } from 'react-icons/fa';
 
-// Importaciones de componentes y estilos
-import Sidebar from '@/components/Sidebar';
-import MetricCard from '@/components/MetricCard'; 
-import ProductoCard from '@/components/ProductCard';
-import layoutStyles from '@/styles/GlobalLayout.module.css';
-import cardStyles from '@/styles/Inventario.module.css'; 
-
-// 🔑 DEFINICIÓN DEL TIPO DE PRODUCTO (Resuelve el error 'any' implícito)
+// 🔑 CORRECCIÓN 2: Definición de tipo basada en ProductoCard y la DB
 interface Producto {
-    id: number;
+    id_prod: number;
     nombre: string;
     marca: string;
-    stock: number;
     precio: number;
+    stock: number;
     etiquetas: string[];
     descripcion: string;
+    // Añade cualquier otra propiedad que ProductoCard espere
 }
 
-// 🔑 DATOS SIMULADOS (CONSTANTES FUERA DEL COMPONENTE)
-// Definidas aquí para que no se re-creen en cada renderizado.
-const MetricsSimuladas = [
-    { titulo: "Total Productos", valor: 7, icono: <FaBox />, claseColor: 'productos' as const },
-    { titulo: "Stock Bajo", valor: 2, icono: <FaExclamationTriangle />, claseColor: 'bajo' as const }, 
-    { titulo: "Sin Stock", valor: 1, icono: <FaTimesCircle />, claseColor: 'sin_stock' as const }, 
-    { titulo: "Valor Total", valor: "$4,409.1", icono: <FaDollarSign />, claseColor: 'valor' as const },
-];
-
-const ProductosSimulados: Producto[] = [ // Asignamos el tipo Producto[]
-    {
-      id: 1,
-      nombre: "Shampoo Profesional",
-      marca: "L'Oreal Professional",
-      stock: 7,
-      precio: 45.99,
-      etiquetas: ["Cuidado Capilar"],
-      descripcion: "Shampoo profesional para todo tipo de cabello con fórmula nutritiva."
-    },
-    {
-      id: 2,
-      nombre: "Tijeras de Corte",
-      marca: "Jaguar",
-      stock: 2, 
-      precio: 120.00,
-      etiquetas: ["Herramientas", "Corte"],
-      descripcion: "Tijeras profesionales de acero japonés para cortes de precisión."
-    },
-    {
-      id: 3,
-      nombre: "Capa de Corte",
-      marca: "BarberSupply",
-      stock: 0, 
-      precio: 15.50,
-      etiquetas: ["Accesorios"],
-      descripcion: "Capa de corte impermeable con cierre ajustable."
-    },
-];
-// FIN DE DATOS SIMULADOS
+interface Metrics {
+    totalProductos: number;
+    stockBajo: number;
+    sinStock: number;
+    valorTotal: number;
+}
 
 const InventarioPage: NextPage = () => {
     const moduleName = "Inventario"; 
     
-    // 🔑 ESTADOS DE FILTROS (Deben estar dentro del componente)
-    const [searchTerm, setSearchTerm] = React.useState('');
-    const [categoryFilter, setCategoryFilter] = React.useState('Todas las categorías');
-    const [stockFilter, setStockFilter] = React.useState('Todo el stock'); 
-
-    // 🔑 FUNCIONES PLACEHOLDER (Deben estar dentro del componente)
-    const handleAddProduct = () => alert("Acción: Abrir modal para añadir nuevo producto.");
-    const handleEditProduct = (id: number) => alert(`Acción: Editar producto con ID: ${id}`);
-    const handleDeleteProduct = (id: number) => {
-        if (confirm(`¿Estás seguro de eliminar el producto con ID: ${id}?`)) {
-            alert("Acción: Eliminar producto (llamar API).");
-        }
-    };
-    const handleAddStock = (id: number) => alert(`Acción: Abrir modal para añadir stock al ID: ${id}`);
+    // Estados para los 3 Modales
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [isStockModalOpen, setIsStockModalOpen] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     
-    const handleClearFilters = () => {
-        setSearchTerm('');
-        setCategoryFilter('Todas las categorías');
-        setStockFilter('Todo el stock');
+    const [selectedProduct, setSelectedProduct] = useState<Producto | null>(null);
+    const [productos, setProductos] = useState<Producto[]>([]);
+    const [metrics, setMetrics] = useState<Metrics>({
+        totalProductos: 0,
+        stockBajo: 0,
+        sinStock: 0,
+        valorTotal: 0,
+    });
+    const [loading, setLoading] = useState(true);
+
+    const fetchData = async () => {
+        setLoading(true);
+        try {
+            const metricsRes = await fetch('/api/inventario/metrics');
+            const metricsData = await metricsRes.json();
+            setMetrics(metricsData);
+
+            const productsRes = await fetch('/api/inventario');
+            const productsData = await productsRes.json();
+            
+            // 🔑 CORRECCIÓN 2: Asegurarse de que el mapeo coincida con la interfaz Producto
+            const productosMapeados: Producto[] = productsData.map((p: any) => ({
+                id_prod: p.id_prod,
+                nombre: p.nom_prod,
+                marca: p.marc_prod,
+                precio: parseFloat(p.precio_prod),
+                stock: p.stock,
+                etiquetas: [p.marc_prod], 
+                descripcion: `Un producto de ${p.marc_prod}.` 
+            }));
+            setProductos(productosMapeados);
+
+        } catch (error) {
+            console.error("Error cargando datos de inventario:", error);
+        } finally {
+            setLoading(false);
+        }
     };
 
-    // 🔑 Lógica de Filtrado (Se puede expandir aquí)
-    const filteredProducts = ProductosSimulados.filter(producto => {
-        const matchesSearch = producto.nombre.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                              producto.marca.toLowerCase().includes(searchTerm.toLowerCase());
-        
-        let matchesCategory = true;
-        if (categoryFilter !== 'Todas las categorías') {
-            matchesCategory = producto.etiquetas.includes(categoryFilter);
-        }
+    useEffect(() => {
+        fetchData();
+    }, []);
 
-        let matchesStock = true;
-        if (stockFilter === 'Stock Bajo') {
-            matchesStock = producto.stock > 0 && producto.stock <= 2;
-        } else if (stockFilter === 'Sin Stock') {
-            matchesStock = producto.stock === 0;
-        } else if (stockFilter === 'En Stock') {
-            matchesStock = producto.stock > 2;
+    // Funciones de Acción (Ahora conectadas)
+    const handleAddProduct = () => setIsAddModalOpen(true);
+    
+    const handleEditProduct = (producto: Producto) => {
+        setSelectedProduct(producto);
+        setIsEditModalOpen(true);
+    };
+    
+    const handleDeleteProduct = async (id: number) => {
+        if (confirm(`¿Estás seguro de eliminar este producto? Esta acción es irreversible.`)) {
+            try {
+                const response = await fetch(`/api/inventario/${id}`, { method: 'DELETE' });
+                if (!response.ok) {
+                    const res = await response.json();
+                    throw new Error(res.message);
+                }
+                fetchData(); 
+            } catch (error: any) {
+                alert(`Error al eliminar: ${error.message}`);
+            }
         }
-
-        return matchesSearch && matchesCategory && matchesStock;
-    });
+    };
+    
+    const handleAddStock = (producto: Producto) => {
+        setSelectedProduct(producto);
+        setIsStockModalOpen(true);
+    };
 
     return (
         <>
@@ -117,73 +124,93 @@ const InventarioPage: NextPage = () => {
                 <title>{moduleName} - Barbería Gestor</title>
             </Head>
             
-            <div className={layoutStyles.layoutContainer}> 
-                <Sidebar currentModule={moduleName} />
-                
-                <main className={layoutStyles.mainContent}> 
-                    <div className={cardStyles.headerInventario}>
-                        <h1>📦 Gestión de Inventario y Productos</h1>
-                        <button className={cardStyles.agregarButton} onClick={handleAddProduct}>
-                           + Añadir Nuevo Producto
-                        </button>
-                    </div>
+            {isAddModalOpen && (
+                <AddProductModal 
+                    onClose={() => setIsAddModalOpen(false)}
+                    onProductAdded={fetchData} 
+                />
+            )}
+            {isStockModalOpen && selectedProduct && (
+                <AddStockModal
+                    producto={selectedProduct}
+                    onClose={() => setIsStockModalOpen(false)}
+                    onStockUpdated={fetchData}
+                />
+            )}
+            {isEditModalOpen && selectedProduct && (
+                <EditProductModal
+                    producto={selectedProduct}
+                    onClose={() => setIsEditModalOpen(false)}
+                    onProductUpdated={fetchData}
+                />
+            )}
+            
+            {/* El Layout de _app.tsx aplica el <main> y el padding */}
+            
+            <div className={cardStyles.headerInventario}>
+                <h1>📦 Gestión de Inventario y Productos</h1>
+                <button className={cardStyles.agregarButton} onClick={handleAddProduct}>
+                   + Añadir Nuevo Producto
+                </button>
+            </div>
 
-                    <p style={{ color: '#999', marginBottom: '30px' }}>
-                        Administra el stock y productos de la barbería.
-                    </p>
+            <p style={{ color: '#aaa', marginBottom: '30px' }}>
+                Administra el stock y productos de la barbería.
+            </p>
 
-                    {/* === 1. GRID DE MÉTRICAS === */}
-                    <div className={cardStyles.metricGrid}>
-                        {MetricsSimuladas.map((metric) => (
-                            <MetricCard key={metric.titulo} {...metric} />
-                        ))}
-                    </div>
+            {/* === 1. GRID DE MÉTRICAS (Datos Reales) === */}
+            <div className={cardStyles.metricGrid}>
+                <MetricCard 
+                    titulo="Total Productos" 
+                    valor={metrics.totalProductos} 
+                    icono={<FaBox />} 
+                    claseColor="productos" 
+                />
+                <MetricCard 
+                    titulo="Stock Bajo (<10)" 
+                    valor={metrics.stockBajo} 
+                    icono={<FaExclamationTriangle />} 
+                    claseColor="bajo" 
+                />
+                <MetricCard 
+                    titulo="Sin Stock" 
+                    valor={metrics.sinStock} 
+                    icono={<FaTimesCircle />} 
+                    claseColor="sin_stock" 
+                />
+                <MetricCard 
+                    titulo="Valor Total" 
+                    valor={`$${metrics.valorTotal.toFixed(2)}`} 
+                    icono={<FaDollarSign />} 
+                    claseColor="valor" 
+                />
+            </div>
 
-                    {/* === 2. BARRA DE FILTROS === */}
-                    <div className={cardStyles.filterBar}>
-                        <input 
-                            type="text" 
-                            placeholder="🔍 Buscar productos por nombre o marca." 
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
+            {/* === 2. BARRA DE FILTROS (Funcionalidad pendiente) === */}
+            <div className={cardStyles.filterBar}>
+                <input type="text" placeholder="🔍 Buscar productos..." />
+                <select><option>Todas las categorías</option></select>
+                <select><option>Todo el stock</option></select>
+                <button className={`${cardStyles.filterButton} ${cardStyles.clearButton}`}>
+                   Limpiar
+                </button>
+            </div>
+
+            {/* === 3. LISTA DE PRODUCTOS (Datos Reales) === */}
+            <div className={cardStyles.grid}>
+                {loading ? (
+                    <p>Cargando productos...</p>
+                ) : (
+                    productos.map((producto) => (
+                        <ProductoCard 
+                            key={producto.id_prod} 
+                            producto={producto}
+                            onEdit={() => handleEditProduct(producto)}
+                            onDelete={() => handleDeleteProduct(producto.id_prod)}
+                            onAddStock={() => handleAddStock(producto)}
                         />
-                        
-                        <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
-                            <option value="Todas las categorías">Todas las categorías</option>
-                            <option value="Cuidado Capilar">Cuidado Capilar</option>
-                            <option value="Herramientas">Herramientas</option>
-                            <option value="Accesorios">Accesorios</option>
-                        </select>
-                        
-                        <select value={stockFilter} onChange={(e) => setStockFilter(e.target.value)}>
-                            <option value="Todo el stock">Todo el stock</option>
-                            <option value="En Stock">En Stock</option>
-                            <option value="Stock Bajo">Stock Bajo</option>
-                            <option value="Sin Stock">Sin Stock</option>
-                        </select>
-
-                        <button 
-                            className={`${cardStyles.filterButton} ${cardStyles.clearButton}`}
-                            onClick={handleClearFilters}
-                        >
-                           Limpiar
-                        </button>
-                    </div>
-
-                    {/* === 3. LISTA DE PRODUCTOS (GRID) === */}
-                    <div className={cardStyles.grid}>
-                        {filteredProducts.map((producto) => ( // 🔑 Usamos filteredProducts
-                            <ProductoCard 
-                                key={producto.id} 
-                                producto={producto}
-                                onEdit={handleEditProduct}
-                                onDelete={handleDeleteProduct}
-                                onAddStock={handleAddStock}
-                            />
-                        ))}
-                    </div>
-
-                </main>
+                    ))
+                )}
             </div>
         </>
     );

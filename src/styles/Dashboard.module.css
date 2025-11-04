@@ -1,0 +1,155 @@
+/* src/styles/Dashboard.module.css */
+
+/* ------------------- Encabezado y Títulos ------------------- */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.title {
+    font-size: 2.5em; /* 40px */
+    font-weight: 700;
+    color: var(--color-text, #f0f0f0);
+}
+
+.date {
+    font-size: 1.1em;
+    color: var(--color-label, #aaaaaa);
+}
+
+.sectionTitle {
+    font-size: 1.5em; /* 24px */
+    font-weight: 600;
+    color: var(--color-text, #f0f0f0);
+    margin-bottom: 15px;
+    margin-top: 30px;
+}
+
+/* ------------------- Cuadrículas (Grids) ------------------- */
+.dailySummaryGrid,
+.metricsGrid {
+    display: grid;
+    /* 4 columnas en escritorio, 2 en tablet, 1 en móvil */
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+}
+
+.chartsGrid {
+    display: grid;
+    grid-template-columns: 2fr 1fr; /* 2/3 para gráfico, 1/3 para lista */
+    gap: 20px;
+    margin-top: 20px;
+}
+
+/* ------------------- Tarjetas (Cards) ------------------- */
+
+.chartCard,
+.listCard {
+    background-color: var(--color-card, #2A2A2A); /* Fondo de tarjeta estándar */
+    padding: 25px;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.chartCard {
+    min-height: 300px;
+}
+
+.listCard ul {
+    list-style: none;
+    padding: 0;
+}
+
+.listCard li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    font-size: 0.9em;
+    border-bottom: 1px solid var(--color-background, #252525);
+}
+.listCard li:last-child {
+    border-bottom: none;
+}
+
+/* ------------------- Tarjetas de Métricas (KPIs) ------------------- */
+.metricCard {
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+/* 🔑 TIPO 1: Resumen del Día (Color Púrpura/Rojo Oscuro del prototipo) */
+.dailyCard {
+    background-color: #3a2d3e; /* Tono Púrpura/Vino Oscuro */
+    border: 1px solid #5a4d5e;
+}
+
+/* 🔑 TIPO 2: Métricas Mensuales (Color Gris/Azul Oscuro del prototipo) */
+.monthlyCard {
+    background-color: var(--color-card, #2A2A2A); /* Fondo de tarjeta estándar */
+    border: 1px solid #444;
+}
+
+.cardHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+}
+
+.cardHeader .icon {
+    font-size: 1.8em;
+}
+
+/* Colores de Iconos (Alineados con tu paleta) */
+.iconGreen { color: #28a745; } /* Verde para dinero */
+.iconBlue { color: var(--color-primary, #0D6EFD); } /* Azul Primario */
+.iconPurple { color: #9b59b6; } /* Púrpura para citas/clientes */
+.iconYellow { color: var(--color-accent, #F5C542); } /* Amarillo Acento */
+.iconOrange { color: #e67e22; }
+
+.cardContent .label {
+    font-size: 1em;
+    color: var(--color-label, #aaaaaa);
+}
+
+.cardContent .value {
+    font-size: 2.2em;
+    font-weight: 700;
+    color: var(--color-text, #f0f0f0);
+    margin-top: 5px;
+}
+
+.cardFooter {
+    margin-top: 15px;
+}
+
+.comparison {
+    font-size: 0.9em;
+}
+
+.comparisonUp {
+    color: #28a745; /* Verde */
+}
+
+.comparisonDown {
+    color: #e74c3c; /* Rojo */
+}
+
+/* Placeholder para el gráfico */
+.chartPlaceholder {
+    height: 100%;
+    min-height: 250px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-label);
+    border: 2px dashed #444;
+    border-radius: 5px;
+}

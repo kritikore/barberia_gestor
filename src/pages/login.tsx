@@ -1,21 +1,21 @@
 // src/pages/login.tsx
 
-import { useState, FormEvent } from 'react';
+import React, { useState, FormEvent } from 'react';
 import { NextPage } from 'next';
-import { useRouter } from 'next/router'; // Para la redirección después del login
-import styles from '../styles/Login.module.css'; // <--- Importación del CSS Module
+import Head from 'next/head';
+import Link from 'next/link'; // 🔑 Importar Link
+import { useRouter } from 'next/router';
+// 🔑 Asegúrate de que la ruta de estilos sea correcta (usando @/ o ../)
+import styles from '@/styles/Login.module.css'; 
 
-// Define las interfaces para asegurar que los datos del formulario son correctos
 interface LoginFormState {
   email: string;
   password: string;
 }
 
 const LoginPage: NextPage = () => {
-  // Inicialización del hook de enrutamiento
   const router = useRouter(); 
   
-  // Estado del formulario y la UI
   const [formState, setFormState] = useState<LoginFormState>({
     email: '',
     password: '',
@@ -23,122 +23,119 @@ const LoginPage: NextPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Maneja los cambios en los inputs
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
     setFormState(prevState => ({
       ...prevState,
-      [name]: value,
+      [e.target.name]: e.target.value,
     }));
   };
 
-  // Maneja el envío del formulario y llama al API de Yovany
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
     setIsLoading(true);
 
-    // =========================================================
-    // ✅ LÓGICA DE ACCESO DE DESARROLLO (MANTENIDA TEMPORALMENTE)
-    // Usar 'dev@gestor.com' y 'access' para saltar el API fallido (404)
-    // =========================================================
+    // Acceso de desarrollo temporal
     if (formState.email === 'dev@gestor.com' && formState.password === 'access') {
-        console.log("Acceso de Desarrollo concedido. Redirigiendo a Inventario.");
-        // Redirige directamente al panel del Gestor (Inventario)
-        router.push('/inventario'); 
+        console.log("Acceso de Desarrollo concedido.");
+        router.push('/dashboard'); // O '/inventario'
         setIsLoading(false);
-        return; // Detiene la ejecución para no llamar al API
+        return; 
     }
-    // =========================================================
 
     try {
-      // ----------------------------------------------------
-      // LLAMADA A LA API DE AUTENTICACIÓN (ENDPOINT DE YOVANY)
-      // ----------------------------------------------------
+      // Llamada a la API de autenticación (Login)
       const response = await fetch('/api/auth/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formState),
       });
 
       const data = await response.json();
-
       if (!response.ok) {
-        // Error 401: Credenciales inválidas
-        throw new Error(data.message || 'Error de conexión con el servidor.');
+        throw new Error(data.message || 'Error de autenticación');
       }
 
-      // Si es exitoso, redireccionar según el rol (Administrador o Barbero)
+      // Redirección basada en rol
       if (data.user.role === 'admin') {
-        router.push('/dashboard'); // Redirigir al dashboard de administrador
-      } else if (data.user.role === 'barbero') {
-        router.push('/barbero/bitacora'); // Redirigir a la vista de Barbero
+        router.push('/dashboard');
       } else {
-         throw new Error('Rol de usuario no reconocido.');
+        router.push('/barbero/bitacora'); // O la ruta del barbero
       }
       
     } catch (err: any) {
-      // Muestra el error de autenticación al usuario
       setError(err.message);
-    } finally {
-      setIsLoading(false);
+      setIsLoading(false); // Asegúrate de parar la carga en caso de error
     }
   };
 
   return (
-    // Usa la clase de contenedor principal para centrar
     <div className={styles.loginContainer}>
-      {/* Usa la clase de la caja para el estilo oscuro */}
       <div className={styles.loginBox}>
         
         <h1>💈 Barbería Gestor</h1>
         <h2>Panel de Control</h2>
         
         <form onSubmit={handleSubmit}>
-          {/* Campo de Email/Usuario */}
-          <div className={styles.formGroup}>
-            <label htmlFor="email">Usuario:</label>
-            <input
-              className={styles.loginInput}
-              id="email"
-              name="email"
-              type="text"
-              placeholder="administrador o usuario"
-              value={formState.email}
-              onChange={handleChange}
-              required
-            />
-          </div>
+          {/* ... (Campos de email y password) ... */}
+          <div className={styles.formGroup}>
+            <label htmlFor="email">Usuario:</label>
+            <input
+              className={styles.loginInput}
+              id="email"
+              name="email"
+              type="text"
+              placeholder="administrador o usuario"
+              value={formState.email}
+              onChange={handleChange}
+              required
+            />
+          </div>
+          <div className={styles.formGroup}>
+            <label htmlFor="password">Contraseña:</label>
+            <input
+              className={styles.loginInput}
+              id="password"
+              name="password"
+              type="password"
+              placeholder="••••••••"
+              value={formState.password}
+              onChange={handleChange}
+              required
+            />
+          </div>
 
-          {/* Campo de Contraseña */}
-          <div className={styles.formGroup}>
-            <label htmlFor="password">Contraseña:</label>
-            <input
-              className={styles.loginInput}
-              id="password"
-              name="password"
-              type="password"
-              placeholder="••••••••"
-              value={formState.password}
-              onChange={handleChange}
-              required
-            />
-          </div>
-
-          {/* Mensaje de Error */}
           {error && <p className={styles.errorMessage}>{error}</p>}
 
-          {/* Botón de Enviar */}
           <button 
             type="submit" 
             className={styles.loginButton} 
-            disabled={isLoading || !formState.email || !formState.password} // Deshabilita si está cargando o campos vacíos
+            disabled={isLoading}
           >
             {isLoading ? 'Accediendo...' : 'Acceder'}
           </button>
         </form>
+        
+        {/* 🔑 CORRECCIÓN: Enlace a la página de registro */}
+        <div style={{ marginTop: '25px', textAlign: 'center', color: 'var(--color-label)' }}>
+            <p>
+                ¿Eres un nuevo empleado?{' '}
+                {/* 1. Se eliminó la etiqueta <a> interior.
+                  2. 'style' se pasa directamente al componente <Link>.
+                */}
+                <Link 
+                    href="/register" 
+                    style={{ 
+                        color: 'var(--color-accent)', 
+                        fontWeight: 'bold', 
+                        textDecoration: 'underline',
+                        cursor: 'pointer'
+                    }}
+                >
+                    Regístrate aquí
+                </Link>
+            </p>
+        </div>
       </div>
     </div>
   );

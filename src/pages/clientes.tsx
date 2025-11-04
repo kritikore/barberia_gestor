@@ -1,41 +1,111 @@
-// Ejemplo: src/pages/clientes.tsx
-
+// src/pages/clientes.tsx
+import React, { useState, useEffect } from 'react';
 import { NextPage } from 'next';
 import Head from 'next/head';
-import Sidebar from '@/components/Sidebar'; // Asegúrate de que la ruta de importación sea correcta
-import styles from '../styles/GlobalLayout.module.css'; // Asume que tienes un layout base para el fondo
+// 🔑 CORRECCIÓN: ¡Eliminamos la importación duplicada de Sidebar!
+// El Layout (en _app.tsx) ya lo incluye.
+// import Sidebar from '@/components/Sidebar'; 
 
-const ModuloPage: NextPage = () => {
-    // 1. **CAMBIAR:** Módulo que se ilumina en el Sidebar
+// Importamos la Interfaz y el Componente
+import ClientesTable, { Cliente } from '@/components/ClientesTable'; 
+import AddClientModal from '@/components/AddClientModal';
+import { FaUsers } from 'react-icons/fa'; 
+import layoutStyles from '@/styles/GlobalLayout.module.css'; 
+import clientStyles from '@/styles/Clientes.module.css'; 
+
+const ClientesPage: NextPage = () => {
     const moduleName = "Clientes"; 
+
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [clientes, setClientes] = useState<Cliente[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    const fetchClientes = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const response = await fetch('/api/clientes'); 
+            if (!response.ok) throw new Error('Error al cargar clientes');
+            const data = await response.json();
+            
+            const clientesMapeados = data.map((cli: any) => ({
+                id_clie: cli.id_clie,
+                nombre: `${cli.nom_clie} ${cli.apell_clie}`,
+                telefono: cli.tel_clie,
+                // Datos simulados (necesitaríamos JOINS con SERVICIO_REALIZADO)
+                ultimaVisita: '2025-10-10', 
+                totalServicios: 5,
+                gastoTotal: 450.00
+            }));
+            setClientes(clientesMapeados);
+
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchClientes();
+    }, []);
+
+    const handleAddClient = () => setIsModalOpen(true);
+    
+    const handleClientAdded = () => {
+        fetchClientes(); 
+    };
 
     return (
         <>
             <Head>
-                {/* 2. **CAMBIAR:** Título de la página */}
                 <title>{moduleName} - Barbería Gestor</title>
             </Head>
             
-            {/* Asume que tu Sidebar está diseñado para un layout flexible */}
-            <div className={styles.layoutContainer} style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#12121e', color: '#f0f0f0' }}>
-                <Sidebar currentModule={moduleName} />
+            {isModalOpen && (
+                <AddClientModal 
+                    onClose={() => setIsModalOpen(false)} 
+                    onClientAdded={handleClientAdded}
+                />
+            )}
+            
+            {/* 🔑 CORRECCIÓN: Eliminamos el <div className={layoutStyles.layoutContainer}>
+                y el <Sidebar ... /> porque _app.tsx y Layout.tsx ya lo hacen. */}
+            
+            <main className={layoutStyles.mainContent}> 
+                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    <h1>
+                        <FaUsers style={{ marginRight: '10px', color: 'var(--color-accent)' }} /> 
+                        Gestión de Clientes
+                    </h1>
+                    <button 
+                        onClick={handleAddClient} 
+                        style={{ 
+                            backgroundColor: 'var(--color-accent)', 
+                            color: 'var(--color-background)', 
+                            border: 'none', 
+                            padding: '10px 15px', 
+                            borderRadius: '6px', 
+                            cursor: 'pointer',
+                            fontWeight: 'bold'
+                        }}
+                    >
+                       + Añadir Nuevo Cliente
+                    </button>
+                </div>
                 
-                <main style={{ flexGrow: 1, padding: '40px' }}>
-                    
-                    {/* 3. **CAMBIAR:** Encabezado y Descripción del Módulo */}
-                    <h1>👥 {moduleName}</h1>
-                    <p style={{ marginTop: '10px', fontSize: '1.1em', color: '#999' }}>
-                        Módulo en desarrollo. Aquí se gestionarán los perfiles y el historial de los clientes.
-                    </p>
+                {/* ... (Barra de Filtros) ... */}
 
-                    <div style={{ padding: '20px', marginTop: '30px', border: '1px solid #333', borderRadius: '8px' }}>
-                        <h3 style={{color: '#E91E63'}}>ÁREA DE CONSTRUCCIÓN</h3>
-                        <p>El contenido real de la interfaz se implementará aquí.</p>
-                    </div>
-
-                </main>
-            </div>
+                {loading && <p>Cargando clientes...</p>}
+                {error && <p style={{color: 'var(--color-danger)'}}>{error}</p>}
+                {!loading && !error && (
+                    // 🔑 CORRECCIÓN: Pasamos la prop 'clientes' al componente
+                    <ClientesTable clientes={clientes} /> 
+                )}
+            </main>
         </>
     );
 };
-export default ModuloPage;
+
+export default ClientesPage;

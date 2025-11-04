@@ -1,0 +1,43 @@
+/* src/styles/Configuracion.module.css */
+.sectionCard {
+    background-color: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 25px;
+    margin-bottom: 30px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.sectionTitle {
+    font-size: 1.5em;
+    font-weight: 600;
+    color: var(--color-accent); /* Amarillo Mostaza */
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: 10px;
+}
+
+/* Reutilizamos los estilos de Modal.module.css para el formulario */
+.formGroup {
+    composes: formGroup from "@/styles/Modal.module.css";
+}
+.formGrid {
+    composes: formGrid from "@/styles/Modal.module.css";
+}
+.submitButton {
+    composes: submitButton from "@/styles/Modal.module.css";
+}
+.cancelButton {
+    composes: cancelButton from "@/styles/Modal.module.css";
+}
+
+/* Estilos para el Theme Toggle */
+.themeToggle {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    font-size: 1.1em;
+}
+.themeToggle button {
+    padding: 10px 20px;
+}
