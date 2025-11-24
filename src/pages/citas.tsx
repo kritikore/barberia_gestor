@@ -2,13 +2,12 @@
 import React, { useState, useEffect } from 'react';
 import { NextPage } from 'next';
 import Head from 'next/head';
-import { FaCalendarAlt, FaCheck, FaTimes } from 'react-icons/fa'; // Iconos
+import { FaCalendarAlt, FaCheck, FaTimes } from 'react-icons/fa'; 
 
 import layoutStyles from '@/styles/GlobalLayout.module.css';
-import styles from '@/styles/Servicios.module.css'; // Reutilizamos el CSS de la tabla
+import styles from '@/styles/Servicios.module.css'; // Reusamos estilos de tabla
 import AddCitaModal from '@/components/AddCitaModal'; 
 
-// Interfaz para la Cita (de la API GET)
 interface Cita {
     id_cita: number;
     fecha: string;
@@ -21,7 +20,6 @@ interface Cita {
 
 const CitasPage: NextPage = () => {
     const moduleName = "Citas"; 
-
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [citas, setCitas] = useState<Cita[]>([]);
     const [loading, setLoading] = useState(true);
@@ -44,42 +42,34 @@ const CitasPage: NextPage = () => {
         fetchData();
     }, []);
 
-    // 🔑 REQ-C5 y REQ-C6: Funcionalidad futura para el barbero
-    const handleComplete = (id: number) => {
-        alert(`Acción: Marcar Cita ${id} como 'Completada' y mover a SERVICIO_REALIZADO. (Esto actualizará el Dashboard)`);
-        // Aquí iría el fetch a PUT /api/citas/[id] { estado: 'Completada' }
-        // Y el fetch a POST /api/servicios-realizados
+    const handleComplete = async (id: number) => {
+        if (!confirm(`¿Marcar cita como completada?`)) return;
+        
+        try {
+            const res = await fetch(`/api/citas/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ estado: 'Completada', observaciones: 'Finalizado por admin.' })
+            });
+            if (!res.ok) throw new Error('Error al completar');
+            fetchData(); 
+        } catch (error: any) {
+            alert(`Error: ${error.message}`);
+        }
     };
 
     return (
         <>
-            <Head>
-                <title>{moduleName} - Barbería Gestor</title>
-            </Head>
+            <Head><title>{moduleName} - Barbería Gestor</title></Head>
             
-            {isModalOpen && (
-                <AddCitaModal
-                    onClose={() => setIsModalOpen(false)}
-                    onSuccess={fetchData} // Refresca los datos al añadir
-                />
-            )}
+            {isModalOpen && <AddCitaModal onClose={() => setIsModalOpen(false)} onSuccess={fetchData} />}
 
             <main className={layoutStyles.mainContent}> 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
-                    <h1>
-                        <FaCalendarAlt style={{ marginRight: '10px', color: 'var(--color-accent)' }} /> 
-                        Agenda de Citas
-                    </h1>
-                    <button onClick={() => setIsModalOpen(true)} style={{ /* Estilos del botón + Añadir */ }}>
-                       + Agendar Nueva Cita
-                    </button>
+                    <h1><FaCalendarAlt style={{ marginRight: '10px', color: 'var(--color-accent)' }} /> Agenda de Citas</h1>
+                    <button onClick={() => setIsModalOpen(true)} style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-background)', border: 'none', padding: '10px 15px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>+ Agendar Nueva Cita</button>
                 </div>
                 
-                <p style={{ color: '#aaa', marginBottom: '40px' }}>
-                    Administra las citas pendientes y futuras de los clientes.
-                </p>
-
-                {/* Tabla de Citas (REQ-C7) */}
                 <div className={styles.tableContainer}>
                     <table className={styles.serviciosTable}>
                         <thead>
@@ -94,29 +84,19 @@ const CitasPage: NextPage = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {loading ? (
-                                <tr><td colSpan={7} style={{textAlign: 'center'}}>Cargando citas...</td></tr>
-                            ) : (
+                            {loading ? (<tr><td colSpan={7} style={{textAlign: 'center'}}>Cargando...</td></tr>) : (
                                 citas.map((c) => (
                                     <tr key={c.id_cita}>
                                         <td>{c.nombre_cliente}</td>
                                         <td>{c.nombre_servicio}</td>
                                         <td>{c.nombre_barbero}</td>
-                                        <td>{new Date(c.fecha).toLocaleDateString()}</td>
+                                        <td>{new Date(c.fecha).toLocaleDateString('es-MX')}</td>
                                         <td>{c.hora}</td>
                                         <td>{c.estado}</td>
                                         <td className={styles.actionCell}>
-                                            <button 
-                                                title="Marcar como Completada"
-                                                className={`${styles.actionButton} ${styles.editIcon}`} 
-                                                onClick={() => handleComplete(c.id_cita)}>
-                                                <FaCheck />
-                                            </button>
-                                            <button 
-                                                title="Cancelar Cita"
-                                                className={`${styles.actionButton} ${styles.deleteIcon}`}>
-                                                <FaTimes />
-                                            </button>
+                                            {c.estado === 'Confirmada' && (
+                                                <button className={`${styles.actionButton} ${styles.editIcon}`} style={{color: '#28a745'}} onClick={() => handleComplete(c.id_cita)}><FaCheck /></button>
+                                            )}
                                         </td>
                                     </tr>
                                 ))

@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import styles from '@/styles/Modal.module.css';
 import { FaTimes } from 'react-icons/fa';
 
-// Definimos las interfaces para los datos que cargaremos
 interface Cliente { id_clie: number; nom_clie: string; apell_clie: string; }
 interface Barbero { id_bar: number; nom_bar: string; apell_bar: string; }
 interface Servicio { id_serv: number; tipo: string; }
@@ -15,12 +14,10 @@ interface AddCitaModalProps {
 
 const AddCitaModal: React.FC<AddCitaModalProps> = ({ onClose, onSuccess }) => {
     
-    // Estados para los dropdowns
     const [clientes, setClientes] = useState<Cliente[]>([]);
     const [barberos, setBarberos] = useState<Barbero[]>([]);
     const [servicios, setServicios] = useState<Servicio[]>([]);
     
-    // Estado del formulario
     const [formData, setFormData] = useState({
         id_clie: '',
         id_bar: '',
@@ -31,11 +28,10 @@ const AddCitaModal: React.FC<AddCitaModalProps> = ({ onClose, onSuccess }) => {
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
 
-    // 🔑 Cargar datos para los Dropdowns (Selects)
+    // Cargar datos para los selects
     useEffect(() => {
         const loadDropdowns = async () => {
             try {
-                // Usamos las APIs que ya creamos
                 const [resClientes, resBarberos, resServicios] = await Promise.all([
                     fetch('/api/clientes'),
                     fetch('/api/personal'),
@@ -43,11 +39,12 @@ const AddCitaModal: React.FC<AddCitaModalProps> = ({ onClose, onSuccess }) => {
                 ]);
                 
                 setClientes(await resClientes.json());
-                setBarberos(await resBarberos.json());
+                const allBarberos = await resBarberos.json();
+                setBarberos(allBarberos.filter((b: any) => b.estado === 'Activo'));
                 setServicios(await resServicios.json());
                 
             } catch (err) {
-                setError("Error al cargar listas de clientes o barberos.");
+                setError("Error al cargar listas.");
             }
         };
         loadDropdowns();
@@ -94,33 +91,26 @@ const AddCitaModal: React.FC<AddCitaModalProps> = ({ onClose, onSuccess }) => {
                 <form onSubmit={handleSubmit}>
                     {error && <p className={styles.errorMessage}>{error}</p>}
                     
-                    {/* Dropdown de Clientes (REQ-C1) */}
                     <div className={styles.formGroup}>
                         <label>Cliente</label>
                         <select name="id_clie" value={formData.id_clie} onChange={handleChange} required>
                             <option value="">Seleccione un cliente...</option>
                             {clientes.map(c => (
-                                <option key={c.id_clie} value={c.id_clie}>
-                                    {c.nom_clie} {c.apell_clie}
-                                </option>
+                                <option key={c.id_clie} value={c.id_clie}>{c.nom_clie} {c.apell_clie}</option>
                             ))}
                         </select>
                     </div>
 
-                    {/* Dropdown de Barberos (REQ-C1) */}
                     <div className={styles.formGroup}>
                         <label>Barbero</label>
                         <select name="id_bar" value={formData.id_bar} onChange={handleChange} required>
                             <option value="">Seleccione un barbero...</option>
                             {barberos.map(b => (
-                                <option key={b.id_bar} value={b.id_bar}>
-                                    {b.nom_bar} {b.apell_bar}
-                                </option>
+                                <option key={b.id_bar} value={b.id_bar}>{b.nom_bar} {b.apell_bar}</option>
                             ))}
                         </select>
                     </div>
 
-                    {/* Dropdown de Servicios (REQ-C1) */}
                     <div className={styles.formGroup}>
                         <label>Servicio</label>
                         <select name="id_serv" value={formData.id_serv} onChange={handleChange} required>
@@ -138,14 +128,12 @@ const AddCitaModal: React.FC<AddCitaModalProps> = ({ onClose, onSuccess }) => {
                         </div>
                         <div className={styles.formGroup}>
                             <label>Hora</label>
-                            <input name="hora" value={formData.hora} onChange={handleChange} type="time" step="1800" /* 30 min */ required />
+                            <input name="hora" value={formData.hora} onChange={handleChange} type="time" step="1800" required />
                         </div>
                     </div>
                     
                     <div className={styles.formActions}>
-                        <button type="button" className={styles.cancelButton} onClick={onClose} disabled={loading}>
-                            Cancelar
-                        </button>
+                        <button type="button" className={styles.cancelButton} onClick={onClose} disabled={loading}>Cancelar</button>
                         <button type="submit" className={styles.submitButton} style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-background)' }} disabled={loading}>
                             {loading ? 'Agendando...' : 'Agendar Cita'}
                         </button>

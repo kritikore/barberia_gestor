@@ -1,4 +1,4 @@
-/* src/styles/Modal.module.css - Estilo Urbano/Industrial */
+/* src/styles/Modal.module.css - Optimizado para formularios densos */
 
 .modalBackdrop {
     position: fixed;
@@ -11,17 +11,27 @@
     justify-content: center;
     align-items: center;
     z-index: 2000;
+    /* 🔑 Añadido: Permite scroll si el formulario es muy largo */
+    overflow-y: auto; 
+    padding: 20px; /* Espacio para que el modal no pegue con los bordes */
 }
 
 .modalContent {
     background-color: var(--color-card, #2A2A2A);
     color: var(--color-text, #F8F9FA);
     border-radius: 8px;
-    padding: 25px;
+    /* 🔑 CAMBIO: Reducido de 600px a 500px para ser más compacto */
     width: 100%;
-    max-width: 600px; /* Ancho del modal */
+    max-width: 500px; 
+    
     box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
     border: 1px solid #444;
+    
+    /* 🔑 Añadido: Asegura que el padding esté dentro del ancho */
+    box-sizing: border-box; 
+    
+    /* 🔑 CAMBIO: Padding vertical reducido para más espacio */
+    padding: 20px 25px; 
 }
 
 .modalHeader {
@@ -29,14 +39,14 @@
     justify-content: space-between;
     align-items: center;
     border-bottom: 1px solid #444;
-    padding-bottom: 15px;
+    padding-bottom: 10px; /* 🔑 CAMBIO: Reducido */
     margin-bottom: 20px;
 }
 
 .modalHeader h2 {
     margin: 0;
-    font-size: 1.5em;
-    color: var(--color-accent, #F5C542); /* Color de acento (Amarillo) */
+    font-size: 1.4em; /* 🔑 CAMBIO: Reducido */
+    color: var(--color-accent, #F5C542);
 }
 
 .closeButton {
@@ -54,29 +64,30 @@
 .formGrid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 15px;
+    gap: 12px; /* 🔑 CAMBIO: Reducido de 15px */
 }
 
 .formGroup {
     display: flex;
     flex-direction: column;
-    margin-bottom: 15px;
+    margin-bottom: 12px; /* 🔑 CAMBIO: Reducido de 15px */
 }
 
 .formGroup label {
-    margin-bottom: 8px;
+    margin-bottom: 6px; /* 🔑 CAMBIO: Reducido de 8px */
     font-weight: 600;
+    font-size: 0.9em; /* 🔑 CAMBIO: Reducido */
     color: var(--color-label, #CCCCCC);
 }
 
 .formGroup input,
 .formGroup select {
-    padding: 10px 15px;
+    padding: 10px 12px; /* 🔑 CAMBIO: Padding reducido */
     border: 1px solid #444;
     background-color: var(--color-input-bg, #1C1C1C);
     color: var(--color-text, #F8F9FA);
     border-radius: 6px;
-    font-size: 1em;
+    font-size: 0.95em; /* 🔑 CAMBIO: Reducido */
 }
 
 .formActions {
@@ -84,7 +95,7 @@
     justify-content: flex-end;
     gap: 10px;
     margin-top: 20px;
-    padding-top: 20px;
+    padding-top: 15px; /* 🔑 CAMBIO: Reducido */
     border-top: 1px solid #444;
 }
 
@@ -107,7 +118,7 @@
 }
 
 .submitButton {
-    background-color: var(--color-primary, #0D6EFD); /* Azul Primario */
+    background-color: var(--color-primary, #0D6EFD); 
     color: white;
     border: none;
 }
@@ -126,4 +137,5 @@
     border-radius: 6px;
     margin-bottom: 15px;
     text-align: center;
+    font-size: 0.9em; /* 🔑 CAMBIO: Reducido */
 }
