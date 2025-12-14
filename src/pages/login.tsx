@@ -59,11 +59,15 @@ const LoginPage: NextPage = () => {
       }
 
       // Redirección basada en el rol
-      if (data.user.role === 'admin') {
-        router.push('/dashboard');
-      } else {
-        router.push('/barbero/dashboard'); 
-      }
+      // 🔑 NUEVO: Guardar datos del usuario en localStorage para usarlos después
+            localStorage.setItem('userProfile', JSON.stringify(data.user));
+
+            // Redirección
+            if (data.user.role === 'admin') {
+                router.push('/dashboard');
+            } else {
+                router.push('/barbero/dashboard');
+            }
       
     } catch (err: any) {
       setError(err.message);

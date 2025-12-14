@@ -1,21 +1,18 @@
 // src/pages/barbero/nuevo-servicio.tsx
+
 import React, { useState, useEffect } from 'react';
 import { NextPage } from 'next';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { FaCut, FaArrowLeft, FaMoneyBillWave, FaUser, FaPlus, FaTrash } from 'react-icons/fa';
+import { FaCut, FaArrowLeft, FaMoneyBillWave, FaUser, FaPlus, FaTrash, FaCheckCircle } from 'react-icons/fa';
 import BarberLayout from '@/components/BarberLayout';
 import styles from '@/styles/Modal.module.css'; 
+import { sendWhatsAppReminder } from '@/utils/whatsapp';
+import CobroModal from '@/components/CobroModal'; 
 
-interface Cliente { id_clie: number; nom_clie: string; apell_clie: string; }
+interface Cliente { id_clie: number; nom_clie: string; apell_clie: string; tel_clie: string; }
 interface ServicioDB { id_serv: number; tipo: string; precio: string; }
-
-// Interfaz para los items en el "carrito"
-interface ServicioTicket {
-    id_serv: number;
-    nombre: string;
-    precio: number;
-}
+interface ServicioTicket { id_serv: number; nombre: string; precio: number; }
 
 const categoriasServicios = [
     "Corte de cabello", "Arreglo de barba y bigote", "Afeitado clásico",
@@ -30,20 +27,17 @@ const NuevoServicioPage: NextPage = () => {
     const [clientes, setClientes] = useState<Cliente[]>([]);
     const [serviciosDB, setServiciosDB] = useState<ServicioDB[]>([]);
     
-    // Formulario General
     const [selectedClient, setSelectedClient] = useState('');
-    const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]); // Fecha hoy por defecto
-
-    // Selección actual (para agregar)
+    const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]); 
+    
     const [selectedCategory, setSelectedCategory] = useState('');
     const [selectedServiceId, setSelectedServiceId] = useState('');
     const [precioActual, setPrecioActual] = useState(0);
-
-    // 🔑 TICKET: Lista de servicios seleccionados
     const [ticket, setTicket] = useState<ServicioTicket[]>([]);
+    
     const [loading, setLoading] = useState(false);
+    const [showCobroModal, setShowCobroModal] = useState(false);
 
-    // Cargar datos
     useEffect(() => {
         const loadData = async () => {
             try {
@@ -54,24 +48,18 @@ const NuevoServicioPage: NextPage = () => {
                 if (resCli.ok) setClientes(await resCli.json());
                 if (resServ.ok) setServiciosDB(await resServ.json());
                 if (clienteId) setSelectedClient(clienteId as string);
-            } catch (error) { console.error(error); }
+            } catch (error) { console.error("Error cargando datos", error); }
         };
         loadData();
     }, [clienteId]);
 
-    // 🔑 Lógica de Filtrado INTELIGENTE (Palabras clave)
     const serviciosFiltrados = serviciosDB.filter(s => {
-        if (!selectedCategory || selectedCategory === "") return true;
-        
-        const nombreServicio = s.tipo.toLowerCase();
-        const palabrasCategoria = selectedCategory.toLowerCase().split(' ').filter(w => w.length > 3); // Filtra palabras cortas como 'de', 'y'
-
-        // Si alguna palabra clave de la categoría está en el nombre del servicio, lo mostramos
-        // Ej: Categoría "Corte de cabello" (Claves: corte, cabello) -> Coincide con "Corte Clásico"
-        return palabrasCategoria.some(palabra => nombreServicio.includes(palabra)) || nombreServicio.includes(selectedCategory.toLowerCase());
+        if (!selectedCategory) return true;
+        const cat = selectedCategory.toLowerCase();
+        const serv = s.tipo.toLowerCase();
+        return serv.includes(cat) || cat.includes(serv);
     });
 
-    // Al seleccionar un servicio del dropdown
     const handleServiceSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const id = e.target.value;
         setSelectedServiceId(id);
@@ -79,67 +67,103 @@ const NuevoServicioPage: NextPage = () => {
         if (servicio) setPrecioActual(parseFloat(servicio.precio));
     };
 
-    // 🔑 AGREGAR AL TICKET
     const handleAddToTicket = () => {
         if (!selectedServiceId) return;
         const servicio = serviciosDB.find(s => s.id_serv.toString() === selectedServiceId);
         if (servicio) {
-            const newItem: ServicioTicket = {
-                id_serv: servicio.id_serv,
-                nombre: servicio.tipo,
-                precio: precioActual // Usamos el precio que el barbero haya podido editar
-            };
-            setTicket([...ticket, newItem]);
-            // Resetear selección
+            setTicket([...ticket, { id_serv: servicio.id_serv, nombre: servicio.tipo, precio: precioActual }]);
             setSelectedServiceId('');
             setPrecioActual(0);
         }
     };
 
-    // 🔑 ELIMINAR DEL TICKET
     const handleRemoveFromTicket = (index: number) => {
         const newTicket = [...ticket];
         newTicket.splice(index, 1);
         setTicket(newTicket);
     };
 
-    // Calcular Total
     const totalTicket = ticket.reduce((sum, item) => sum + item.precio, 0);
 
-    // GUARDAR TODO
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (ticket.length === 0) return alert("Debes agregar al menos un servicio al ticket.");
+    // --- FUNCIÓN PARA ABRIR MODAL ---
+    const abrirModal = (e: React.FormEvent) => {
+        e.preventDefault(); 
+        if (!selectedClient) return alert("Selecciona un cliente.");
+        if (ticket.length === 0) return alert("Agrega al menos un servicio.");
         
+        setShowCobroModal(true); 
+    };
+
+    // --- FUNCIÓN PRINCIPAL DE GUARDADO (Aquí integramos los insumos) ---
+    const guardarEnBaseDeDatos = async (metodoPago: string, propina: number, totalFinal: number) => {
         setLoading(true);
+        setShowCobroModal(false);
+
         try {
+            // 1. Guardar el Servicio (Venta)
             const response = await fetch('/api/barbero/registrar-servicio', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     id_clie: selectedClient,
-                    servicios: ticket, // Enviamos el array
-                    fecha: fecha // Enviamos la fecha seleccionada
+                    servicios: ticket, 
+                    fecha: fecha,
+                    precio_final: totalFinal 
                 }),
             });
 
             if (!response.ok) throw new Error('Error al registrar');
 
-            alert(`✅ Cobro registrado exitosamente.\nTotal: $${totalTicket.toFixed(2)}`);
-            
+            // 🔑 2. NUEVO: DESCONTAR INSUMOS AUTOMÁTICAMENTE
+            // Intentamos obtener el ID del barbero logueado, si no existe usamos 1 como fallback
+            const userData = localStorage.getItem('userProfile');
+            const id_bar = userData ? JSON.parse(userData).id_bar : 1; 
+
+            // Llamada silenciosa a la API de insumos (no detiene el flujo si falla)
+            await fetch('/api/barbero/descontar-insumos', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id_bar: id_bar })
+            }).catch(err => console.error("Error descontando insumos", err));
+
+            // 3. Flujo de WhatsApp y Redirección
+            const cliente = clientes.find(c => c.id_clie.toString() === selectedClient);
+            const mensajeConfirm = `✅ Cobro de $${totalFinal.toFixed(2)} registrado con éxito.\n\n¿Enviar ticket por WhatsApp?`;
+
+            if (cliente && confirm(mensajeConfirm)) {
+                const detalles = ticket.map(t => `• ${t.nombre}`).join('\n');
+                const whatsappMsg = `💈 *The Gentleman's Cut* 💈\n\nHola ${cliente.nom_clie}!\nGracias por tu visita.\n\n✅ *Servicios:*\n${detalles}\n\n💰 Total: $${totalFinal.toFixed(2)}\n💳 Pago: ${metodoPago}\n\n¡Vuelve pronto!`;
+                sendWhatsAppReminder(cliente.tel_clie, whatsappMsg);
+            }
+
             if (clienteId) router.push(`/barbero/clientes/${clienteId}`);
             else router.push('/barbero/dashboard');
 
         } catch (error) {
-            alert('Error al registrar.');
+            alert('Error al registrar la venta.');
         } finally {
             setLoading(false);
         }
     };
 
+    const currentClientName = clientes.find(c => c.id_clie.toString() === selectedClient)?.nom_clie || "Cliente";
+
     return (
-        <BarberLayout>
+        <>
             <Head><title>Nuevo Servicio - Ticket</title></Head>
+
+            {showCobroModal && (
+                <CobroModal 
+                    cita={{
+                        id_cita: 0, 
+                        nombre_cliente: currentClientName,
+                        nombre_servicio: ticket.length > 1 ? "Varios Servicios" : (ticket[0]?.nombre || ""),
+                        precio_estimado: totalTicket
+                    }}
+                    onClose={() => setShowCobroModal(false)}
+                    onConfirm={guardarEnBaseDeDatos} 
+                />
+            )}
 
             <div style={{ maxWidth: '800px', margin: '0 auto' }}>
                 <button onClick={() => router.back()} style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '20px'}}>
@@ -149,13 +173,12 @@ const NuevoServicioPage: NextPage = () => {
                 <div className={styles.modalContent} style={{ maxWidth: '100%' }}>
                     <div className={styles.modalHeader}>
                         <h2 style={{ color: 'var(--color-accent)' }}>
-                            <FaCut style={{marginRight: 10}}/> Crear Ticket de Servicio
+                            <FaCut style={{marginRight: 10}}/> Crear Ticket
                         </h2>
                     </div>
                     
-                    <form onSubmit={handleSubmit}>
+                    <form onSubmit={abrirModal}>
                         
-                        {/* 1. SELECCIÓN DE CLIENTE Y FECHA */}
                         <div className={styles.formGrid}>
                             <div className={styles.formGroup}>
                                 <label><FaUser /> Cliente</label>
@@ -165,17 +188,14 @@ const NuevoServicioPage: NextPage = () => {
                                 </select>
                             </div>
                             <div className={styles.formGroup}>
-                                <label>Fecha del Servicio</label>
+                                <label>Fecha</label>
                                 <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} required style={{ padding: '10px', borderRadius: '6px', background: '#1a1a1a', color: 'white', border: '1px solid #444', width: '100%' }}/>
                             </div>
                         </div>
 
                         <hr style={{ borderColor: '#444', margin: '20px 0' }} />
 
-                        {/* 2. AGREGAR SERVICIOS AL TICKET */}
                         <div style={{ backgroundColor: '#252525', padding: '15px', borderRadius: '8px', marginBottom: '20px' }}>
-                            <h3 style={{marginTop: 0, color: '#ccc', fontSize: '1em'}}>Agregar Servicio al Ticket</h3>
-                            
                             <div className={styles.formGrid}>
                                 <div className={styles.formGroup}>
                                     <label>Categoría</label>
@@ -200,18 +220,14 @@ const NuevoServicioPage: NextPage = () => {
                                     <label>Precio ($)</label>
                                     <input type="number" value={precioActual} onChange={(e) => setPrecioActual(parseFloat(e.target.value))} style={{ padding: '10px', borderRadius: '6px', background: '#1a1a1a', color: '#4caf50', border: '1px solid #444', width: '100%', fontWeight: 'bold' }} />
                                 </div>
-                                <button type="button" onClick={handleAddToTicket} style={{ padding: '10px 20px', backgroundColor: '#0D6EFD', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', height: '42px', marginBottom: '12px' }}>
+                                <button type="button" onClick={handleAddToTicket} style={{ padding: '10px 20px', backgroundColor: '#0D6EFD', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', height: '42px', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '5px' }}>
                                     <FaPlus /> Agregar
                                 </button>
                             </div>
                         </div>
 
-                        {/* 3. RESUMEN DEL TICKET (LISTA) */}
                         <div style={{ marginBottom: '20px' }}>
-                            <h3 style={{color: 'var(--color-accent)'}}>Resumen del Ticket</h3>
-                            {ticket.length === 0 ? (
-                                <p style={{color: '#666', fontStyle: 'italic'}}>No hay servicios agregados aún.</p>
-                            ) : (
+                            {ticket.length > 0 && (
                                 <ul style={{ listStyle: 'none', padding: 0, border: '1px solid #444', borderRadius: '6px', overflow: 'hidden' }}>
                                     {ticket.map((item, index) => (
                                         <li key={index} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 15px', borderBottom: '1px solid #444', backgroundColor: '#2a2a2a', alignItems: 'center' }}>
@@ -222,9 +238,8 @@ const NuevoServicioPage: NextPage = () => {
                                             </div>
                                         </li>
                                     ))}
-                                    {/* TOTAL */}
                                     <li style={{ display: 'flex', justifyContent: 'space-between', padding: '15px', backgroundColor: '#333', fontWeight: 'bold', fontSize: '1.2em' }}>
-                                        <span style={{color: 'white'}}>Total a Pagar:</span>
+                                        <span style={{color: 'white'}}>Total:</span>
                                         <span style={{color: '#4caf50'}}>${totalTicket.toFixed(2)}</span>
                                     </li>
                                 </ul>
@@ -237,13 +252,14 @@ const NuevoServicioPage: NextPage = () => {
                             style={{width: '100%', marginTop: '10px', backgroundColor: 'var(--color-accent)', color: 'black', fontSize: '1.1em', padding: '15px'}} 
                             disabled={loading || ticket.length === 0}
                         >
-                            {loading ? 'Registrando...' : '✅ Cobrar Ticket'}
+                            {loading ? 'Procesando...' : 'Cobrar Ticket'}
                         </button>
                     </form>
                 </div>
             </div>
-        </BarberLayout>
+        </>
     );
 };
 
 export default NuevoServicioPage;
+

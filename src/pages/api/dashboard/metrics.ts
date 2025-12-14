@@ -1,55 +1,79 @@
+// src/pages/api/dashboard/metrics.ts
 import { NextApiRequest, NextApiResponse } from 'next';
-import { db } from '@/lib/db'; // Importa la conexión desde el archivo corregido
-
-// Esta es la consulta SQL de PostgreSQL que diseñamos
-const getDashboardMetricsQuery = `
-    WITH ServiciosHoy AS (
-        SELECT
-            COALESCE(SUM(TOTAL), 0) AS total_servicios,
-            COUNT(*) AS conteo_servicios,
-            COUNT(DISTINCT ID_CLIE) AS clientes_atendidos
-        FROM SERVICIO_REALIZADO
-        WHERE FECHA = CURRENT_DATE
-    ),
-    VentasHoy AS (
-        SELECT
-            COALESCE(SUM(V.Total), 0) AS total_ventas,
-            COALESCE(SUM(DV.CANTIDAD), 0) AS productos_vendidos
-        FROM VENTA V
-        JOIN detalle_venta DV ON V.ID_VENTA = DV.ID_VENTA
-        WHERE V.DIA = EXTRACT(DAY FROM CURRENT_DATE)
-          AND V.MES = EXTRACT(MONTH FROM CURRENT_DATE)
-          AND V.AO = EXTRACT(YEAR FROM CURRENT_DATE)
-    )
-    SELECT
-        (SELECT total_servicios FROM ServiciosHoy) + (SELECT total_ventas FROM VentasHoy) AS "totalRevenue",
-        (SELECT conteo_servicios FROM ServiciosHoy) AS "servicesCount",
-        (SELECT productos_vendidos FROM VentasHoy) AS "productsSoldCount",
-        (SELECT clientes_atendidos FROM ServiciosHoy) AS "clientsAttended";
-`;
+import { db } from '@/lib/db';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-    if (req.method !== 'GET') {
-        return res.status(405).json({ message: 'Método no permitido' });
-    }
+    if (req.method !== 'GET') return res.status(405).end();
 
     try {
-        // Ejecutamos la consulta en la base de datos
-        const result = await db.query(getDashboardMetricsQuery);
+        // 1. INGRESOS DESGLOSADOS (Servicios vs Productos) - Mes Actual
+        const serviciosQuery = `
+            SELECT COALESCE(SUM(total), 0) as total 
+            FROM servicio_realizado 
+            WHERE EXTRACT(MONTH FROM fecha) = EXTRACT(MONTH FROM CURRENT_DATE)
+            AND EXTRACT(YEAR FROM fecha) = EXTRACT(YEAR FROM CURRENT_DATE);
+        `;
+        
+        const productosQuery = `
+            SELECT COALESCE(SUM(total), 0) as total 
+            FROM venta 
+            WHERE mes = EXTRACT(MONTH FROM CURRENT_DATE)::int
+            AND ao = EXTRACT(YEAR FROM CURRENT_DATE)::int;
+        `;
 
-        // PostgreSQL devuelve los números como strings, los convertimos
-        const metrics = {
-            totalRevenue: parseFloat(result.rows[0].totalRevenue) || 0,
-            servicesCount: parseInt(result.rows[0].servicesCount, 10) || 0,
-            productsSoldCount: parseInt(result.rows[0].productsSoldCount, 10) || 0,
-            clientsAttended: parseInt(result.rows[0].clientsAttended, 10) || 0,
-        };
+        // 2. ALERTAS DE INSUMOS (Bodega Baja)
+        const insumosAlertQuery = `
+            SELECT COUNT(*) as alertas FROM insumo WHERE stock_bodega <= nivel_alerta;
+        `;
 
-        // Devolvemos los datos listos para el frontend
-        res.status(200).json(metrics);
+        // 3. MEJOR BARBERO DEL MES (Por dinero generado)
+        const topBarberQuery = `
+            SELECT b.nom_bar, SUM(sr.total) as total
+            FROM servicio_realizado sr
+            JOIN barber b ON sr.id_bar = b.id_bar
+            WHERE EXTRACT(MONTH FROM sr.fecha) = EXTRACT(MONTH FROM CURRENT_DATE)
+            GROUP BY b.nom_bar
+            ORDER BY total DESC
+            LIMIT 1;
+        `;
+
+        // 4. METRICAS GENERALES (Las que ya tenías)
+        const citasQuery = `SELECT COUNT(*) as total FROM cita WHERE (estado = 'Pendiente' OR estado = 'Confirmada') AND fecha >= CURRENT_DATE;`;
+        const clientesQuery = `SELECT COUNT(*) as total FROM cliente;`;
+        const proxCitaQuery = `SELECT hora FROM cita WHERE fecha = CURRENT_DATE AND hora >= CURRENT_TIME AND estado != 'Cancelada' ORDER BY hora ASC LIMIT 1;`;
+
+        // Ejecutar todo
+        const [servRes, prodRes, insumoRes, topBarberRes, citasRes, clieRes, proxRes] = await Promise.all([
+            db.query(serviciosQuery),
+            db.query(productosQuery),
+            db.query(insumosAlertQuery),
+            db.query(topBarberQuery),
+            db.query(citasQuery),
+            db.query(clientesQuery),
+            db.query(proxCitaQuery)
+        ]);
+
+        const totalServicios = parseFloat(servRes.rows[0]?.total || 0);
+        const totalProductos = parseFloat(prodRes.rows[0]?.total || 0);
+
+        res.status(200).json({
+            // Financiero
+            totalRevenue: totalServicios + totalProductos,
+            desglose: {
+                servicios: totalServicios,
+                productos: totalProductos
+            },
+            // Operativo
+            citasPendientes: parseInt(citasRes.rows[0]?.total || 0),
+            clientesTotales: parseInt(clieRes.rows[0]?.total || 0),
+            proximaCita: proxRes.rows.length > 0 ? proxRes.rows[0].hora.slice(0,5) : "Sin citas hoy",
+            // Nuevos
+            insumosBajos: parseInt(insumoRes.rows[0]?.alertas || 0),
+            topBarber: topBarberRes.rows[0] ? topBarberRes.rows[0].nom_bar : "N/A"
+        });
 
     } catch (error) {
-        console.error("Error al consultar métricas del Dashboard:", error);
-        res.status(500).json({ message: 'Error interno del servidor' });
+        console.error(error);
+        res.status(500).json({ message: 'Error en métricas' });
     }
 }

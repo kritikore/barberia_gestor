@@ -134,7 +134,7 @@ const VentasPage: NextPage = () => {
     };
 
     return (
-        <BarberLayout>
+        <>
             <Head><title>Registrar Venta - Barbero</title></Head>
 
             {/* Notificación Flotante */}
@@ -248,7 +248,7 @@ const VentasPage: NextPage = () => {
                     </div>
                 </div>
             </div>
-        </BarberLayout>
+        </>
     );
 };
 

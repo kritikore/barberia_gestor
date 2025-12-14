@@ -2,33 +2,43 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { db } from '@/lib/db';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     // --- MÉTODO GET: Listar todas las citas (para la agenda) ---
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {    
+    // --- MÉTODO GET: Listar citas (Con filtro opcional por Barbero) ---
     if (req.method === 'GET') {
         try {
-            // Unimos las tablas para obtener los nombres, no solo los IDs
-            const query = `
+            const { barberoId } = req.query; // 🔑 Leemos si hay un filtro
+
+            let query = `
                 SELECT 
-                    c.id_cita, 
-                    c.fecha, 
-                    c.hora, 
-                    c.estado,
+                    c.id_cita, c.fecha, c.hora, c.estado,
                     cl.nom_clie || ' ' || cl.apell_clie AS nombre_cliente,
                     b.nom_bar || ' ' || b.apell_bar AS nombre_barbero,
-                    s.tipo AS nombre_servicio
+                    s.tipo AS nombre_servicio,
+                    c.id_bar -- Necesitamos el ID para saber de quien es
                 FROM cita c
                 JOIN cliente cl ON c.id_clie = cl.id_clie
                 JOIN barber b ON c.id_bar = b.id_bar
                 JOIN servicio s ON c.id_serv = s.id_serv
-                WHERE c.fecha >= CURRENT_DATE -- Mostrar solo citas de hoy en adelante
-                ORDER BY c.fecha, c.hora ASC;
+                WHERE c.fecha >= CURRENT_DATE 
             `;
-            const result = await db.query(query);
+
+            const values = [];
+
+            // 🔑 Si se pasa un ID, filtramos. Si no (Admin), mostramos todo.
+            if (barberoId) {
+                query += ` AND c.id_bar = $1`;
+                values.push(barberoId);
+            }
+
+            query += ` ORDER BY c.fecha, c.hora ASC;`;
+
+            const result = await db.query(query, values);
             return res.status(200).json(result.rows);
+
         } catch (error: any) {
-             console.error("Error en API al listar citas:", error);
-            return res.status(500).json({ message: 'Error interno del servidor', error: error.message });
+            // ... manejo de errores ...
         }
     }
 

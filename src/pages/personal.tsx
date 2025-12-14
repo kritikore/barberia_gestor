@@ -2,160 +2,157 @@
 import React, { useState, useEffect } from 'react';
 import { NextPage } from 'next';
 import Head from 'next/head';
-import { FaUserTie } from 'react-icons/fa';
+import { useRouter } from 'next/router';
+import { FaUserTie, FaPlus, FaTrash, FaEye, FaEdit } from 'react-icons/fa';
+import AdminLayout from '@/components/AdminLayout';
+import styles from '@/styles/Servicios.module.css';
 
-import layoutStyles from '@/styles/GlobalLayout.module.css';
-import styles from '@/styles/Personal.module.css'; 
-import AddBarberModal from '@/components/AddBarberModal';
-import BarberCard from '@/components/BarberCard';
-
-// 🔑 Interfaz para los datos de la API (DEBE INCLUIR EDAD)
-interface BarberData {
+interface Barbero {
     id_bar: number;
     nom_bar: string;
     apell_bar: string;
     tel_bar: string;
-    edad_bar: number; // ⬅️ 🔑 CORRECCIÓN: Esta línea faltaba
-    email: string;
-    estado: 'Activo' | 'Inactivo';
-    posicion: string;
-    fecha_contratacion: string;
-    serviciosMes: string;
-    ingresosGenerados: string;
-}
-
-// Interfaz para las Métricas
-interface Metrics {
-    total: number;
-    activos: number;
-    inactivos: number;
+    email_bar: string;
+    estado: string;
 }
 
 const PersonalPage: NextPage = () => {
-    const moduleName = "Personal"; 
-
-    // Estados
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [barberToEdit, setBarberToEdit] = useState<BarberData | null>(null);
-    const [barbers, setBarbers] = useState<BarberData[]>([]);
-    const [metrics, setMetrics] = useState<Metrics>({ total: 0, activos: 0, inactivos: 0 });
+    const router = useRouter();
+    const [personal, setPersonal] = useState<Barbero[]>([]);
     const [loading, setLoading] = useState(true);
 
-    // Función para cargar/refrescar TODOS los datos
-    const fetchData = async () => {
-        setLoading(true);
+    const fetchPersonal = async () => {
         try {
-            const [metricsRes, barbersRes] = await Promise.all([
-                fetch('/api/personal/metrics'),
-                fetch('/api/personal')
-            ]);
-            
-            if (!metricsRes.ok || !barbersRes.ok) {
-                throw new Error('Error al cargar datos del personal');
+            const res = await fetch('/api/personal');
+            if (res.ok) setPersonal(await res.json());
+        } catch (error) { console.error(error); } 
+        finally { setLoading(false); }
+    };
+
+    useEffect(() => { fetchPersonal(); }, []);
+
+    // Placeholder para editar (Aquí abrirías un modal o irías a una página de edición)
+    const handleEdit = (barbero: Barbero) => {
+        alert(`Editar datos de: ${barbero.nom_bar} (Funcionalidad pendiente de conectar al Modal de Edición)`);
+        // Aquí podrías poner: setIsEditModalOpen(true); setSelectedBarbero(barbero);
+    };
+
+    const handleDelete = async (id: number) => {
+        if(!confirm("¿Estás seguro de dar de baja a este barbero?\n\nNota: Su historial de ventas se conservará, pero ya no tendrá acceso al sistema.")) return;
+        
+        try {
+            const response = await fetch(`/api/personal/${id}`, {
+                method: 'DELETE',
+            });
+
+            if (!response.ok) {
+                throw new Error('Error al eliminar');
             }
 
-            setMetrics(await metricsRes.json());
-            setBarbers(await barbersRes.json());
+            alert("✅ Barbero dado de baja exitosamente.");
+            
+            // Recargamos la lista para ver el cambio de estado
+            fetchPersonal();
 
         } catch (error) {
-            console.error("Error cargando datos de personal:", error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        fetchData();
-    }, []);
-
-    // --- Funciones de Acciones (Modales y Delete) ---
-    
-    // Abrir modal para AÑADIR
-    const handleAddBarber = () => {
-        setBarberToEdit(null); // Asegura que no estemos editando
-        setIsModalOpen(true);
-    };
-
-    // Abrir modal para EDITAR
-    const handleEditBarber = (barber: BarberData) => {
-        setBarberToEdit(barber);
-        setIsModalOpen(true);
-    };
-
-    // Acción de ELIMINAR (Soft Delete)
-    const handleDeleteBarber = async (id: number) => {
-        if (confirm(`¿Seguro que quieres desactivar a este barbero?`)) {
-            try {
-                const response = await fetch(`/api/personal/${id}`, { method: 'DELETE' });
-                if (!response.ok) throw new Error('No se pudo desactivar');
-                fetchData(); // Refresca la lista
-            } catch (error: any) {
-                alert(`Error: ${error.message}`);
-            }
+            alert("Hubo un error al intentar dar de baja.");
         }
     };
 
     return (
         <>
-            <Head>
-                <title>{moduleName} - Barbería Gestor</title>
-            </Head>
+            <Head><title>Gestión de Personal</title></Head>
             
-            {isModalOpen && (
-                <AddBarberModal
-                    onClose={() => setIsModalOpen(false)}
-                    onSuccess={fetchData} 
-                    barberToEdit={barberToEdit} // ⬅️ 🔑 Ahora 'barberToEdit' (tipo BarberData) coincide con lo que el modal espera
-                />
-            )}
-
-            <main className={layoutStyles.mainContent}> 
+            <main>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
                     <h1>
                         <FaUserTie style={{ marginRight: '10px', color: 'var(--color-accent)' }} /> 
-                        Gestión de Empleados
+                        Equipo de Barberos
                     </h1>
                     <button 
-                        onClick={handleAddBarber}
-                        // 🔑 Estilos del botón (debes tenerlos en tu CSS)
+                        onClick={() => router.push('/register')} 
                         style={{ 
                             backgroundColor: 'var(--color-accent)', 
                             color: 'var(--color-background)', 
                             border: 'none', 
                             padding: '10px 15px', 
                             borderRadius: '6px', 
-                            cursor: 'pointer',
-                            fontWeight: 'bold'
+                            cursor: 'pointer', 
+                            fontWeight: 'bold',
+                            display: 'flex', alignItems: 'center', gap: 5
                         }}
                     >
-                       + Añadir Nuevo Barbero
+                       <FaPlus /> Nuevo Barbero
                     </button>
                 </div>
-                
-                {/* 1. GRID DE MÉTRICAS (Datos Reales) */}
-                <div className={styles.metricGrid}>
-                    {/* (Aquí renderizarías las 3 tarjetas de métricas) */}
-                </div>
 
-                {/* 2. BARRA DE FILTROS (Funcionalidad pendiente) */}
-                <div className={styles.filterBar}>
-                    {/* (Inputs de filtro se mantienen igual) */}
-                </div>
+                <div className={styles.tableContainer}>
+                    <table className={styles.serviciosTable}>
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Teléfono</th>
+                                <th>Email</th>
+                                <th>Estado</th>
+                                <th style={{textAlign: 'center'}}>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {loading ? (
+                                <tr><td colSpan={5} style={{textAlign: 'center', padding: 20}}>Cargando equipo...</td></tr>
+                            ) : (
+                                personal.map((p) => (
+                                    <tr key={p.id_bar}>
+                                        <td style={{fontWeight: 'bold', color: 'white'}}>
+                                            {p.nom_bar} {p.apell_bar}
+                                        </td>
+                                        <td>{p.tel_bar}</td>
+                                        <td>{p.email_bar}</td>
+                                        <td>
+                                            <span style={{
+                                                padding: '4px 8px', borderRadius: '4px', fontSize: '0.85em',
+                                                backgroundColor: p.estado === 'Activo' ? 'rgba(40, 167, 69, 0.2)' : 'rgba(220, 53, 69, 0.2)',
+                                                color: p.estado === 'Activo' ? '#28a745' : '#DC3545',
+                                                border: p.estado === 'Activo' ? '1px solid #28a745' : '1px solid #DC3545'
+                                            }}>
+                                                {p.estado}
+                                            </span>
+                                        </td>
+                                        
+                                        <td className={styles.actionCell} style={{justifyContent: 'center', gap: '10px'}}>
+                                            {/* 1. VER PERFIL E INSUMOS */}
+                                            <button 
+                                                onClick={() => router.push(`/personal/${p.id_bar}`)}
+                                                className={styles.actionButton} 
+                                                title="Gestionar Insumos / Ver Perfil"
+                                                style={{color: '#0D6EFD', border: '1px solid #0D6EFD'}}
+                                            >
+                                                <FaEye /> Ver Perfil
+                                            </button>
 
-                {/* 3. LISTA DE BARBEROS (Datos Reales) */}
-                <div className={styles.grid}>
-                    {loading ? (
-                        <p>Cargando personal...</p>
-                    ) : (
-                        barbers.map((barber) => (
-                            <BarberCard 
-                                key={barber.id_bar} 
-                                barber={barber}
-                                onEdit={() => handleEditBarber(barber)}
-                                onDelete={() => handleDeleteBarber(barber.id_bar)}
-                            />
-                        ))
-                    )}
+                                            {/* 2. 🔑 EDITAR DATOS (RESTAURADO) */}
+                                            <button 
+                                                onClick={() => handleEdit(p)}
+                                                className={styles.actionButton} 
+                                                title="Editar Datos Personales"
+                                            >
+                                                <FaEdit />
+                                            </button>
+
+                                            {/* 3. ELIMINAR */}
+                                            <button 
+                                                onClick={() => handleDelete(p.id_bar)}
+                                                className={`${styles.actionButton} ${styles.deleteIcon}`} 
+                                                title="Eliminar"
+                                            >
+                                                <FaTrash />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
                 </div>
             </main>
         </>

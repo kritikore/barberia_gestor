@@ -46,7 +46,7 @@ const ConsultarClientesBarbero: NextPage = () => {
     }, [searchTerm, clientes]);
 
     return (
-        <BarberLayout>
+        <>
             <Head><title>Consultar Clientes - Barbero</title></Head>
 
             <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
@@ -124,7 +124,7 @@ const ConsultarClientesBarbero: NextPage = () => {
                     )}
                 </div>
             </div>
-        </BarberLayout>
+        </>
     );
 };
 

@@ -1,43 +1,226 @@
 /* src/styles/Configuracion.module.css */
-.sectionCard {
+
+/* --- ANIMACIONES --- */
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulseGlow {
+    0% { box-shadow: 0 0 0 0 rgba(192, 57, 43, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(192, 57, 43, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(192, 57, 43, 0); }
+}
+
+/* Contenedor Principal */
+.container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding-bottom: 50px;
+}
+
+/* Encabezado */
+.mainHeader {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 40px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid var(--color-border);
+    
+    /* Animación de entrada */
+    animation: slideInUp 0.6s ease-out;
+}
+
+.mainHeader h1 {
+    font-size: 2.5em;
+    font-weight: 800;
+    color: var(--color-accent); /* Dorado */
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin: 0;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+
+.mainHeader p {
+    color: var(--color-label);
+    margin: 5px 0 0 0;
+    font-size: 1.1em;
+}
+
+/* --- TARJETAS (CARDS) --- */
+.card {
     background-color: var(--color-card);
     border: 1px solid var(--color-border);
-    border-radius: 8px;
-    padding: 25px;
+    border-radius: 12px;
+    padding: 30px;
     margin-bottom: 30px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    box-shadow: var(--shadow-card);
+    position: relative;
+    overflow: hidden;
+    
+    /* Animación de entrada en cascada */
+    opacity: 0; 
+    animation: slideInUp 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
 }
 
-.sectionTitle {
-    font-size: 1.5em;
-    font-weight: 600;
-    color: var(--color-accent); /* Amarillo Mostaza */
-    margin-bottom: 20px;
-    border-bottom: 1px solid var(--color-border);
-    padding-bottom: 10px;
+/* Retrasos para efecto cascada */
+.card:nth-child(2) { animation-delay: 0.1s; }
+.card:nth-child(3) { animation-delay: 0.2s; }
+.card:nth-child(4) { animation-delay: 0.3s; }
+
+/* Efecto Hover en Tarjeta */
+.card:hover {
+    transform: translateY(-5px);
+    border-color: var(--color-accent); /* Borde dorado al pasar mouse */
+    box-shadow: 0 12px 24px rgba(0,0,0,0.5);
 }
 
-/* Reutilizamos los estilos de Modal.module.css para el formulario */
-.formGroup {
-    composes: formGroup from "@/styles/Modal.module.css";
-}
-.formGrid {
-    composes: formGrid from "@/styles/Modal.module.css";
-}
-.submitButton {
-    composes: submitButton from "@/styles/Modal.module.css";
-}
-.cancelButton {
-    composes: cancelButton from "@/styles/Modal.module.css";
-}
-
-/* Estilos para el Theme Toggle */
-.themeToggle {
+/* Encabezado de Tarjeta */
+.cardHeader {
     display: flex;
     align-items: center;
     gap: 15px;
-    font-size: 1.1em;
+    margin-bottom: 25px;
 }
-.themeToggle button {
+
+.iconWrapper {
+    background-color: rgba(212, 175, 55, 0.15); /* Dorado transparente */
+    width: 50px;
+    height: 50px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-accent); /* Dorado */
+    font-size: 1.5em;
+    border: 1px solid rgba(212, 175, 55, 0.3);
+}
+
+.cardHeader h2 {
+    margin: 0;
+    font-size: 1.4em;
+    color: var(--color-text); /* Blanco Crema */
+    font-weight: 700;
+}
+
+/* --- FORMULARIOS --- */
+.formGroup {
+    margin-bottom: 20px;
+}
+
+.formGroup label {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--color-accent); /* Dorado para labels */
+    font-size: 0.9em;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.input, .select {
+    width: 100%;
+    padding: 14px;
+    background-color: var(--color-input-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    color: var(--color-text);
+    font-size: 1em;
+    transition: var(--transition-fast);
+}
+
+.input:focus, .select:focus {
+    outline: none;
+    border-color: var(--color-accent);
+    background-color: #222;
+    box-shadow: 0 0 10px rgba(212, 175, 55, 0.2); /* Resplandor dorado */
+}
+
+/* --- BOTONES --- */
+.saveButton {
+    background-color: var(--color-primary); /* Rojo Sangre */
+    color: white;
+    border: none;
+    padding: 14px 35px;
+    border-radius: 50px;
+    font-weight: 700;
+    font-size: 1em;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    transition: var(--transition-smooth);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.saveButton:hover {
+    background-color: #A93226; /* Rojo más oscuro */
+    transform: scale(1.05);
+    box-shadow: 0 5px 15px rgba(192, 57, 43, 0.4);
+}
+
+.saveButton:active {
+    transform: scale(0.98);
+}
+
+.actionButton {
+    background: transparent;
+    border: 1px solid var(--color-label);
+    color: var(--color-text);
     padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    transition: var(--transition-fast);
+}
+
+.actionButton:hover {
+    border-color: var(--color-text);
+    background-color: rgba(255,255,255,0.05);
+}
+
+.dangerButton {
+    background-color: transparent;
+    border: 1px solid var(--color-primary); /* Rojo */
+    color: var(--color-primary);
+    padding: 12px 25px;
+    border-radius: 8px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: var(--transition-fast);
+}
+
+.dangerButton:hover {
+    background-color: var(--color-primary);
+    color: white;
+    box-shadow: 0 5px 15px rgba(192, 57, 43, 0.3);
+}
+
+/* --- FILAS DE PREFERENCIAS --- */
+.prefRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.prefRow:last-child { border-bottom: none; }
+
+.prefLabel {
+    font-size: 1.1em;
+    color: var(--color-text);
 }

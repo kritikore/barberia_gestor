@@ -1,45 +1,43 @@
-// pages/_app.tsx - CORREGIDO
-
+// src/pages/_app.tsx
 import "@/styles/globals.css";
 import type { AppProps } from "next/app";
-import { useRouter } from 'next/router'; 
+import { useRouter } from "next/router";
 import { ThemeProvider } from "@/context/ThemeContext";
+import React from "react";
 
-// 🔑 CORRECCIÓN: Importamos desde 'AdminLayout', no 'Layout'
-import AdminLayout from '@/components/AdminLayout'; 
-import BarberLayout from '@/components/BarberLayout'; 
+import AdminLayout from "@/components/AdminLayout";
+import BarberLayout from "@/components/BarberLayout";
 
-function MyApp({ Component, pageProps }: AppProps) {
-    const router = useRouter();
+export default function MyApp({ Component, pageProps }: AppProps) {
+    const { pathname } = useRouter();
 
-    // 1. Rutas sin ningún Layout (Login, Registro)
-    if (router.pathname === '/login' || router.pathname === '/register') {
-        return (
-             <ThemeProvider>
+    const isAuthPage =
+        pathname.startsWith("/login") ||
+        pathname.startsWith("/register");
+
+    const isBarberPage = pathname.startsWith("/barbero");
+
+    let content: React.ReactNode;
+
+    if (isAuthPage) {
+        content = <Component {...pageProps} />;
+    } else if (isBarberPage) {
+        content = (
+            <BarberLayout>
                 <Component {...pageProps} />
-             </ThemeProvider>
+            </BarberLayout>
         );
-    }
-
-    // 2. Rutas del Barbero (Empiezan con /barbero)
-    if (router.pathname.startsWith('/barbero')) {
-        return (
-            <ThemeProvider>
-                <BarberLayout>
-                    <Component {...pageProps} />
-                </BarberLayout>
-            </ThemeProvider>
-        );
-    }
-
-    // 3. Rutas de Administrador (Por defecto)
-    return (
-        <ThemeProvider>
+    } else {
+        content = (
             <AdminLayout>
                 <Component {...pageProps} />
             </AdminLayout>
+        );
+    }
+
+    return (
+        <ThemeProvider>
+            {content}
         </ThemeProvider>
     );
 }
-
-export default MyApp;

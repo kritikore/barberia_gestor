@@ -1,13 +1,13 @@
 // src/components/DashboardMetricCard.tsx
 import React from 'react';
-import styles from '@/styles/Dashboard.module.css'; // Importa el CSS del Dashboard
+import styles from '@/styles/Dashboard.module.css';
 
 interface CardProps {
     title: string;
     value: string;
     icon: React.ReactNode;
-    iconColorClass: string; // p.ej., styles.iconGreen
-    cardType: 'daily' | 'monthly'; // Para cambiar el color de fondo
+    iconColorClass: string; 
+    cardType: 'daily' | 'monthly'; 
     comparison?: string;
     comparisonColor?: 'up' | 'down';
 }
@@ -21,7 +21,6 @@ const DashboardMetricCard: React.FC<CardProps> = ({
     comparison,
     comparisonColor
 }) => {
-
     const cardStyle = cardType === 'daily' ? styles.dailyCard : styles.monthlyCard;
     const comparisonStyle = comparisonColor === 'up' ? styles.comparisonUp : (comparisonColor === 'down' ? styles.comparisonDown : '');
 

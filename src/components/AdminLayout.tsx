@@ -16,7 +16,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     const mainClasses = `${styles.contentShift} ${isSidebarExpanded ? styles.isExpanded : ''}`;
 
     return (
-        <div style={{ display: 'flex', minHeight: '100vh', width: '100%', backgroundColor: 'var(--color-background)' }}>
+        <div style={{ display: 'flex', minHeight: '100vh', width: '100%', backgroundColor: 'transparent' }}>
             <Sidebar
                 currentModule="Dashboard"
                 onToggle={handleToggle}

@@ -1,48 +1,104 @@
-/* src/styles/Personal.module.css */
-/* ... (Añade aquí los estilos de .metricCard, .filterBar, etc., 
-         puedes copiar y adaptar los de Inventario.module.css) ... */
-
-/* Estilos específicos para la Tarjeta de Barbero (BarberCard) */
-.barberCard {
-    background-color: var(--color-card, #2A2A2A);
-    border-radius: 8px;
-    padding: 20px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-    border: 1px solid #444;
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
+/* ============================================================
+   ANIMACIONES GLOBALES — entradas naturales y microinteracción
+============================================================ */
+@keyframes fadeSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+        filter: blur(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+        filter: blur(0);
+    }
 }
 
+@keyframes softPop {
+    0% { transform: scale(0.92); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes pulseGlow {
+    0% { box-shadow: 0 0 0 rgba(255,255,255,0); }
+    100% { box-shadow: 0 0 12px rgba(255,255,255,0.12); }
+}
+
+/* ============================================================
+   TARJETA PRINCIPAL DEL BARBERO (BarberCard)
+============================================================ */
+.barberCard {
+    background-color: var(--color-card, #2A2A2A);
+    border-radius: 14px;
+    padding: 22px;
+    border: 1px solid #3f3f3f;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+
+    /* ✨ UI Moderna */
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(6px);
+
+    /* 🎬 Animación al aparecer */
+    animation: fadeSlideIn 0.55s ease forwards;
+
+    /* 🇯🇵 Microtransiciones */
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border 0.25s ease;
+}
+
+.barberCard:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.55);
+    border: 1px solid #555;
+}
+
+/* ============================================================
+   HEADER — Avatar + Nombre + Acciones
+============================================================ */
 .cardHeader {
     display: flex;
     align-items: center;
-    gap: 15px;
+    gap: 16px;
 }
 
 .avatar {
-    width: 50px;
-    height: 50px;
+    width: 58px;
+    height: 58px;
     border-radius: 50%;
     background-color: var(--color-accent, #F5C542);
     color: var(--color-background, #1C1C1C);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.5em;
+    font-size: 1.4em;
     font-weight: bold;
+
+    /* ✨ Microefecto */
+    animation: softPop 0.4s ease;
+    transition: transform 0.2s ease;
+}
+
+.avatar:hover {
+    transform: scale(1.06);
 }
 
 .headerInfo h3 {
-    font-size: 1.3em;
+    font-size: 1.35em;
     font-weight: 600;
     color: var(--color-text, #F8F9FA);
+    letter-spacing: 0.5px;
+    transition: color 0.25s ease;
+}
+
+.headerInfo h3:hover {
+    color: var(--color-accent, #F5C542);
 }
 
 .headerActions {
     margin-left: auto;
     display: flex;
-    gap: 10px;
+    gap: 12px;
 }
 
 .actionButton {
@@ -50,12 +106,22 @@
     border: none;
     cursor: pointer;
     font-size: 1.1em;
-    transition: color 0.2s;
+    transition: transform 0.2s ease, color 0.2s ease;
 }
+
+.actionButton:hover {
+    transform: scale(1.15);
+}
+
 .editIcon { color: var(--color-primary, #0D6EFD); }
 .deleteIcon { color: var(--color-danger, #DC3545); }
-.actionButton:hover { transform: scale(1.1); }
 
+.deleteIcon:hover { color: #ff5f5f; }
+.editIcon:hover { color: #5da7ff; }
+
+/* ============================================================
+   TAGS (Estado, Puesto, etc.)
+============================================================ */
 .tags {
     display: flex;
     gap: 10px;
@@ -63,49 +129,78 @@
 }
 
 .tag {
-    padding: 4px 10px;
-    border-radius: 5px;
-    font-size: 0.8em;
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 0.78em;
     font-weight: 600;
     background-color: #444;
+    color: #ddd;
+
+    transition: background-color 0.25s ease, transform 0.25s ease;
 }
+
+.tag:hover {
+    transform: translateY(-2px);
+}
+
+/* Estados */
 .tagStatusActive {
-    background-color: #28a745; /* Verde */
+    background-color: #28a745;
     color: #fff;
 }
+
 .tagStatusInactive {
-    background-color: #6c757d; /* Gris */
+    background-color: #6c757d;
     color: #fff;
 }
+
+/* Puesto */
 .tagPosition {
-    background-color: var(--color-accent, #F5C542); /* Amarillo */
+    background-color: var(--color-accent, #F5C542);
     color: var(--color-background, #1C1C1C);
 }
 
+/* ============================================================
+   GRID DETALLES — Teléfono, Correo, Horarios
+============================================================ */
 .detailsGrid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    font-size: 0.9em;
+    gap: 14px;
+    font-size: 0.92em;
     color: var(--color-label, #CCCCCC);
+    animation: fadeSlideIn 0.7s ease;
 }
-.detailsGrid span { display: flex; align-items: center; gap: 8px; }
 
+.detailsGrid span {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* ============================================================
+   FOOTER (Estadísticas)
+============================================================ */
 .statsFooter {
     display: flex;
     justify-content: space-around;
-    padding-top: 15px;
-    margin-top: 15px;
+    padding-top: 16px;
+    margin-top: 18px;
     border-top: 1px solid #444;
     text-align: center;
+
+    animation: fadeSlideIn 0.9s ease;
 }
+
 .statsFooter .stat h4 {
-    font-size: 0.9em;
+    font-size: 0.85em;
     color: var(--color-label, #CCCCCC);
-    margin-bottom: 5px;
+    margin-bottom: 6px;
 }
+
 .statsFooter .stat p {
-    font-size: 1.4em;
+    font-size: 1.5em;
     font-weight: bold;
     color: var(--color-text, #F8F9FA);
+    animation: pulseGlow 1.6s infinite alternate ease-in-out;
 }

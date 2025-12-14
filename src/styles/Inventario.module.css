@@ -1,23 +1,58 @@
-/* src/styles/Inventario.module.css */
+/* ============================================================
+   ✨ ANIMACIONES MODERNAS
+   ============================================================ */
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(25px) scale(0.98);
+        filter: blur(2px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        filter: blur(0);
+    }
+}
 
-/* --- Estilos Generales de la Rejilla y Tarjetas --- */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* ============================================================
+   ✨ ESTILO GENERAL — GRID DE PRODUCTOS
+   ============================================================ */
 .grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
     gap: 30px;
     margin-top: 30px;
+    animation: fadeIn 0.6s ease-in-out;
 }
 
 .productoCard {
-    background-color: #27273f; 
-    border-radius: 12px;
-    padding: 20px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    background: linear-gradient(145deg, #1f1f2f, #27273f);
+    border-radius: 14px;
+    padding: 22px;
+    box-shadow: 
+        0px 8px 18px rgba(0, 0, 0, 0.45),
+        0px 2px 4px rgba(0, 0, 0, 0.4);
     display: flex;
     flex-direction: column;
+    animation: slideInUp 0.6s ease forwards;
+    transition: transform 0.35s cubic-bezier(.34,1.56,.64,1), box-shadow 0.3s;
 }
 
-/* --- Encabezado de la Tarjeta de Producto --- */
+.productoCard:hover {
+    transform: translateY(-6px) scale(1.02);
+    box-shadow: 
+        0px 14px 30px rgba(0,0,0,0.55),
+        0px 4px 10px rgba(0,0,0,0.45);
+}
+
+/* ============================================================
+   ✨ HEADER DE LA TARJETA
+   ============================================================ */
 .header {
     display: flex;
     justify-content: space-between;
@@ -26,50 +61,46 @@
 }
 
 .nombre {
-    font-size: 1.3em;
+    font-size: 1.35em;
     font-weight: bold;
     color: #fff;
+    letter-spacing: 0.5px;
 }
 
 .marca {
     font-size: 0.9em;
-    color: #aaa;
+    color: #b8b8d8;
     margin-bottom: 10px;
 }
 
-/* --- Botones de Acción (Editar/Eliminar) --- */
+/* ============================================================
+   ✨ ACCIONES (EDITAR / BORRAR)
+   ============================================================ */
 .acciones {
     display: flex;
-    gap: 8px; /* Espacio entre los botones */
+    gap: 8px;
 }
 
 .actionButton {
     background: none;
     border: none;
     cursor: pointer;
-    padding: 0;
-    transition: transform 0.1s;
-    font-size: 1.1em; /* Ajusta el tamaño del icono */
-    line-height: 1; /* Asegura que el icono esté centrado verticalmente */
-    /* Los iconos de React Icons ya son SVG, podemos estilizarlos directamente */
-}
-
-/* Estilo para el icono de editar (Azul) */
-.editIcon {
-    color: #3f51b5; /* Azul primario */
-}
-
-/* Estilo para el icono de eliminar (Rojo) */
-.deleteIcon {
-    color: #f44336; /* Rojo de Sin Stock/Eliminar */
+    padding: 4px;
+    transition: transform 0.2s, filter 0.2s;
+    font-size: 1.25em;
 }
 
 .actionButton:hover {
-    transform: scale(1.1);
+    transform: scale(1.15);
+    filter: drop-shadow(0 0 6px rgba(255,255,255,0.25));
 }
 
+.editIcon { color: #4d6bff; }
+.deleteIcon { color: #ff4d4d; }
 
-/* --- Etiquetas (En Stock, Cuidado Capilar, etc.) --- */
+/* ============================================================
+   ✨ ETIQUETAS
+   ============================================================ */
 .etiquetas {
     display: flex;
     flex-wrap: wrap;
@@ -78,41 +109,52 @@
 }
 
 .etiquetas span {
-    padding: 4px 10px;
-    border-radius: 4px;
+    padding: 6px 12px;
+    border-radius: 6px;
     font-size: 0.8em;
-    font-weight: 500;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    transition: transform 0.25s ease;
 }
 
+.etiquetas span:hover {
+    transform: scale(1.07);
+}
+
+/* Stock Tags */
 .stockNormal {
-    background-color: #2e7d32; 
+    background: #2e7d32;
     color: #fff;
 }
-
 .stockBajo {
-    background-color: #ff9800; 
+    background: #ff9800;
     color: #1a1a2e;
 }
-
 .tag {
-    background-color: #3f51b5; 
+    background: #3f51b5;
     color: #fff;
 }
 
+/* ============================================================
+   ✨ DESCRIPCIÓN
+   ============================================================ */
 .descripcion {
-    font-size: 0.9em;
-    color: #ccc;
-    flex-grow: 1; 
+    font-size: 0.92em;
+    line-height: 1.45em;
+    color: #d4d4e2;
     margin-bottom: 20px;
+    flex-grow: 1;
 }
 
-/* --- Footer (Cantidad, Precio y Botón) --- */
+/* ============================================================
+   ✨ FOOTER (Precio, Cantidad)
+   ============================================================ */
 .footer {
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding-top: 15px;
-    border-top: 1px solid #333;
+    border-top: 1px solid #383850;
 }
 
 .dato {
@@ -122,33 +164,39 @@
 }
 
 .label {
-    font-size: 0.8em;
+    font-size: 0.78em;
     color: #aaa;
-    margin-bottom: 2px;
 }
 
 .valor {
-    font-size: 1.1em;
+    font-size: 1.2em;
     font-weight: bold;
     color: #fff;
 }
 
+/* ============================================================
+   ✨ BOTÓN "Agregar"
+   ============================================================ */
 .agregarButton {
-    background-color: #e91e63; 
+    background: linear-gradient(145deg, #e91e63, #c2185b);
     color: #fff;
     border: none;
-    padding: 10px 15px;
-    border-radius: 6px;
+    padding: 10px 18px;
+    border-radius: 8px;
     cursor: pointer;
     font-weight: bold;
-    transition: background-color 0.2s;
+    transition: transform 0.3s, box-shadow 0.3s;
+    letter-spacing: 0.3px;
 }
 
 .agregarButton:hover {
-    background-color: #c2185b;
+    transform: translateY(-3px);
+    box-shadow: 0 6px 18px rgba(233, 30, 99, 0.4);
 }
 
-/* --- Encabezado de la Página de Inventario (Título + Botón Añadir) --- */
+/* ============================================================
+   ✨ HEADER DE INVENTARIO (TÍTULO + BOTÓN)
+   ============================================================ */
 .headerInventario {
     display: flex;
     justify-content: space-between;
@@ -156,84 +204,93 @@
     margin-bottom: 10px;
 }
 
-/* --- GRID DE MÉTRICAS (4 columnas) --- */
+/* ============================================================
+   ✨ GRID DE MÉTRICAS
+   ============================================================ */
 .metricGrid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); /* Ajustado para pantallas más pequeñas */
-    gap: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 22px;
     margin-bottom: 40px;
 }
 
 .metricCard {
-    background-color: #27273f;
-    border-radius: 8px;
+    background: linear-gradient(145deg, #1f1f2f, #27273f);
+    border-radius: 12px;
     padding: 20px;
     display: flex;
     align-items: center;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+    transition: transform 0.3s ease, box-shadow 0.3s;
+}
+
+.metricCard:hover {
+    transform: translateY(-5px) scale(1.02);
+    box-shadow: 0 10px 24px rgba(0,0,0,0.55);
 }
 
 .metricIcon {
-    font-size: 2em; /* Tamaño del icono */
+    font-size: 2em;
     margin-right: 15px;
-    padding: 10px;
+    padding: 12px;
     border-radius: 50%;
-    display: flex; /* Centra el icono */
-    align-items: center;
-    justify-content: center;
-    color: #fff; /* Color del icono dentro del círculo */
+    color: #fff;
+    box-shadow: inset 0 0 8px rgba(0,0,0,0.4);
 }
 
-/* Colores de Fondo Específicos para MetricCard Icono */
-.productos .metricIcon { background-color: #3f51b5; } /* Azul */
-.bajo .metricIcon { background-color: #ff9800; } /* Naranja */
-.sin_stock .metricIcon { background-color: #f44336; } /* Rojo */
-.valor .metricIcon { background-color: #4caf50; } /* Verde */
-
+/* Colores por categoría */
+.productos .metricIcon { background-color: #3f51b5; }
+.bajo .metricIcon { background-color: #ff9800; }
+.sin_stock .metricIcon { background-color: #f44336; }
+.valor .metricIcon { background-color: #4caf50; }
 
 .metricTitle {
     font-size: 0.9em;
     color: #ccc;
-    margin-bottom: 2px;
 }
 
 .metricValue {
     font-size: 1.6em;
     font-weight: bold;
-    margin: 0;
 }
 
-/* --- BARRA DE FILTROS --- */
+/* ============================================================
+   ✨ BARRA DE FILTROS
+   ============================================================ */
 .filterBar {
-    background-color: #27273f;
+    background: linear-gradient(145deg, #1f1f2f, #27273f);
     padding: 20px;
-    border-radius: 8px;
+    border-radius: 12px;
     display: flex;
-    flex-wrap: wrap; /* Permite que los elementos salten de línea en pantallas pequeñas */
+    flex-wrap: wrap;
     gap: 15px;
     align-items: center;
     margin-bottom: 30px;
+    box-shadow: 0 5px 16px rgba(0,0,0,0.4);
+    animation: slideInUp 0.7s ease;
 }
 
-.filterBar input, .filterBar select {
+.filterBar input,
+.filterBar select {
     padding: 10px 15px;
     border: 1px solid #444;
-    background-color: #1e1e2d;
+    background-color: #1a1a28;
     color: #fff;
     border-radius: 6px;
     font-size: 0.95em;
-    -webkit-appearance: none; /* Elimina estilos por defecto de select/input */
-    -moz-appearance: none;
     appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ccc'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E"); /* Flecha personalizada */
-    background-repeat: no-repeat;
-    background-position: right 10px center;
-    background-size: 16px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.filterBar input:focus,
+.filterBar select:focus {
+    border-color: #e91e63;
+    box-shadow: 0 0 8px rgba(233, 30, 99, 0.4);
 }
 
 .filterBar input {
-    flex-grow: 1; 
-    min-width: 200px; /* Asegura un ancho mínimo para el input de búsqueda */
+    flex-grow: 1;
+    min-width: 200px;
 }
 
 .filterButton {
@@ -241,16 +298,17 @@
     border-radius: 6px;
     cursor: pointer;
     font-weight: bold;
-    transition: background-color 0.2s;
+    transition: background-color 0.2s, transform 0.2s;
 }
 
 .clearButton {
     background: none;
-    color: #e91e63; /* Color primario */
+    color: #e91e63;
     border: 1px solid #e91e63;
-    transition: background-color 0.2s;
+    transition: 0.25s;
 }
 
 .clearButton:hover {
-    background-color: #e91e631a; 
+    background-color: #e91e6318;
+    transform: scale(1.05);
 }

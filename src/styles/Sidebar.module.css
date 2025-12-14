@@ -1,6 +1,6 @@
-/* ------------------- VARIABLES GLOBALES ------------------- */
-/* --color-card: #1a1a1a; --color-accent: #CC9900; --color-background: #252525; */
 
+
+/* ------------------- SIDEBAR ------------------- */
 .sidebar {
     --sidebar-width: 280px;
     --sidebar-collapsed-width: 80px;
@@ -9,25 +9,27 @@
     top: 0;
     left: 0;
     height: 100vh;
-    background-color: var(--color-card, #1a1a1a);
+    background-color: var(--color-card);
     width: var(--sidebar-collapsed-width);
-    transition: width 0.3s ease-in-out;
-    overflow: hidden; /* ✅ Evita el corte visual */
+    transition: width var(--transition-smooth), box-shadow var(--transition-medium);
+    overflow: hidden;
     box-sizing: border-box;
     z-index: 1000;
+    box-shadow: 2px 0 15px rgba(0,0,0,0.3);
 }
 
 .sidebar.isExpanded {
     width: var(--sidebar-width);
+    box-shadow: 4px 0 25px rgba(0,0,0,0.4);
 }
 
-/* ------------------- 1. LOGO Y TOGGLE ------------------- */
+/* ------------------- LOGO Y TOGGLE ------------------- */
 .logoHeader {
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 15px 10px 15px 15px;
-    border-bottom: 1px solid var(--color-background, #252525);
+    border-bottom: 1px solid var(--color-background);
     position: relative;
 }
 
@@ -40,17 +42,23 @@
 
 .logoIcon {
     font-size: 3em;
-    color: var(--color-accent, #CC9900);
+    color: var(--color-accent);
     min-width: 40px;
     flex-shrink: 0;
     margin-right: 15px;
-    text-shadow: 0 0 10px rgba(204, 153, 0, 0.5);
+    text-shadow: 0 0 10px rgba(204, 153, 0, 0.6);
+    transition: transform var(--transition-smooth), color var(--transition-fast);
+}
+
+.logoIcon:hover {
+    transform: rotate(-10deg) scale(1.1);
+    color: #FFD700;
 }
 
 .menuToggle {
     background: none;
     border: none;
-    color: var(--color-accent, #CC9900);
+    color: var(--color-accent);
     cursor: pointer;
     font-size: 1.5em;
     padding: 10px;
@@ -58,34 +66,43 @@
     flex-shrink: 0;
     margin-left: auto;
     z-index: 1002;
-    margin-right: -5px;
+    transition: transform var(--transition-medium);
 }
 
-/* ------------------- 2. NAVEGACIÓN ------------------- */
+.menuToggle:hover {
+    transform: rotate(90deg);
+}
+
+/* ------------------- NAVEGACIÓN ------------------- */
 .navigation {
     flex-grow: 1;
     margin-top: 10px;
-    width: 100%; /* ✅ Evita empuje al colapsar */
+    width: 100%;
 }
 
 .navItem {
     display: flex;
     align-items: center;
     padding: 12px 15px;
-    color: var(--color-label, #aaaaaa);
+    color: var(--color-label);
     text-decoration: none;
-    transition: background-color 0.2s, color 0.2s;
-    white-space: nowrap;
-    border-radius: 0 5px 5px 0;
+    transition: background-color var(--transition-fast), color var(--transition-fast), transform var(--transition-medium);
+    border-radius: 0 8px 8px 0;
     width: 100%;
     box-sizing: border-box;
 }
 
+.navItem:hover {
+    background-color: rgba(204,153,0,0.2);
+    transform: translateX(5px);
+    color: var(--color-accent);
+}
+
 .navItem.active {
-    background-color: var(--color-accent, #CC9900);
-    color: var(--color-card, #1a1a1a);
+    background-color: var(--color-accent);
+    color: var(--color-card);
     font-weight: bold;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    box-shadow: inset 5px 0 0 rgba(0,0,0,0.2), 0 3px 10px rgba(0,0,0,0.3);
 }
 
 .navItem .icon {
@@ -95,26 +112,33 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: filter var(--transition-fast);
 }
 
 .navItem .text {
     margin-left: 10px;
     opacity: 1;
     width: auto;
-    transition: opacity 0.3s ease, width 0.3s ease;
+    transition: opacity var(--transition-smooth), width var(--transition-smooth);
 }
 
-/* 🔥 Oculta suavemente el texto al colapsar */
+/* Oculta suavemente el texto al colapsar */
 .sidebar:not(.isExpanded) .text {
     opacity: 0;
     width: 0;
     overflow: hidden;
 }
 
-/* ------------------- 3. SECCIÓN DE USUARIO Y LOGOUT ------------------- */
+/* Glow sutil en iconos */
+.sidebar .navItem:hover .icon,
+.sidebar .navItem.active .icon {
+    filter: drop-shadow(0 0 5px var(--color-accent));
+}
+
+/* ------------------- SECCIÓN DE USUARIO Y LOGOUT ------------------- */
 .userSection {
     padding: 15px 10px;
-    border-top: 1px solid var(--color-background, #252525);
+    border-top: 1px solid var(--color-background);
 }
 
 .userInfo {
@@ -122,27 +146,30 @@
     align-items: center;
     margin-bottom: 15px;
     opacity: 0;
-    transition: opacity 0.3s;
+    transform: translateY(10px);
+    transition: opacity var(--transition-smooth), transform var(--transition-smooth);
 }
 
 .isExpanded .userInfo {
     opacity: 1;
+    transform: translateY(0);
 }
 
 .logoutButton {
     background: none;
     border: none;
-    color: var(--color-label, #aaaaaa);
+    color: var(--color-label);
     cursor: pointer;
     display: flex;
     align-items: center;
     padding: 10px 15px;
     width: 100%;
-    transition: background-color 0.2s, color 0.2s;
+    transition: all var(--transition-medium);
 }
 
 .logoutButton:hover {
-    color: var(--color-accent, #CC9900);
+    color: var(--color-accent);
+    transform: scale(1.05);
 }
 
 .logoutButton .icon {
@@ -150,10 +177,10 @@
     margin-right: 10px;
 }
 
-/* ------------------- 4. CONTENIDO PRINCIPAL ------------------- */
+/* ------------------- CONTENIDO PRINCIPAL ------------------- */
 .contentShift {
     margin-left: var(--sidebar-collapsed-width);
-    transition: margin-left 0.3s ease-in-out;
+    transition: margin-left var(--transition-smooth);
     width: 100%;
     flex-grow: 1;
 }

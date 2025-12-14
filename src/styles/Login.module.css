@@ -8,20 +8,27 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100vh;
-    background-color: var(--color-background);
-    font-family: Arial, sans-serif; /* Puedes ajustar la fuente si ya tienen una */
+    min-height: 100vh;
+    width: 100%;
+    
+    /* 🔑 CAMBIO CLAVE: Quitamos el color de fondo sólido */
+    /* background-color: #1C1C1C;  <-- BORRAR ESTO */
+    background-color: transparent; /* <-- PONER ESTO */
+    
+    /* Opcional: Un degradado sutil encima de la foto para mejorar lectura */
+    background: radial-gradient(circle, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.8) 100%);
 }
 
-/* --- Caja Principal del Formulario --- */
+/* La caja del formulario debe seguir siendo oscura para que se lea */
 .loginBox {
-    background-color: var(--color-card);
-    padding: 45px;
+    background-color: rgba(30, 30, 30, 0.90); /* Semitransparente */
+    backdrop-filter: blur(10px); /* Efecto vidrio borroso */
+    padding: 40px;
     border-radius: 12px;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.7);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     width: 100%;
-    max-width: 400px; /* Tamaño fijo para el formulario */
-    color: var(--color-text);
+    max-width: 400px;
     text-align: center;
 }
 

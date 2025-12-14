@@ -4,7 +4,7 @@ import styles from '@/styles/Modal.module.css';
 import { FaTimes } from 'react-icons/fa';
 
 interface Cliente { id_clie: number; nom_clie: string; apell_clie: string; }
-interface Barbero { id_bar: number; nom_bar: string; apell_bar: string; }
+interface Barbero { id_bar: number; nom_bar: string; apell_bar: string; estado: string; }
 interface Servicio { id_serv: number; tipo: string; }
 
 interface AddCitaModalProps {
@@ -14,6 +14,7 @@ interface AddCitaModalProps {
 
 const AddCitaModal: React.FC<AddCitaModalProps> = ({ onClose, onSuccess }) => {
     
+    // Estados para listas desplegables
     const [clientes, setClientes] = useState<Cliente[]>([]);
     const [barberos, setBarberos] = useState<Barbero[]>([]);
     const [servicios, setServicios] = useState<Servicio[]>([]);
@@ -28,23 +29,28 @@ const AddCitaModal: React.FC<AddCitaModalProps> = ({ onClose, onSuccess }) => {
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
 
-    // Cargar datos para los selects
+    // 🔑 Cargar datos al abrir el modal
     useEffect(() => {
         const loadDropdowns = async () => {
             try {
-                const [resClientes, resBarberos, resServicios] = await Promise.all([
+                const [resCli, resBar, resServ] = await Promise.all([
                     fetch('/api/clientes'),
                     fetch('/api/personal'),
                     fetch('/api/servicios')
                 ]);
                 
-                setClientes(await resClientes.json());
-                const allBarberos = await resBarberos.json();
-                setBarberos(allBarberos.filter((b: any) => b.estado === 'Activo'));
-                setServicios(await resServicios.json());
+                if(resCli.ok) setClientes(await resCli.json());
                 
+                if(resBar.ok) {
+                    const allBarberos = await resBar.json();
+                    // Solo barberos activos
+                    setBarberos(allBarberos.filter((b: any) => b.estado === 'Activo'));
+                }
+                
+                if(resServ.ok) setServicios(await resServ.json());
+
             } catch (err) {
-                setError("Error al cargar listas.");
+                setError("Error cargando listas de datos.");
             }
         };
         loadDropdowns();
@@ -71,6 +77,7 @@ const AddCitaModal: React.FC<AddCitaModalProps> = ({ onClose, onSuccess }) => {
                 throw new Error(res.message || 'Error al guardar la cita');
             }
 
+            // Éxito (Sin WhatsApp)
             setLoading(false);
             onSuccess(); 
             onClose(); 
@@ -93,7 +100,7 @@ const AddCitaModal: React.FC<AddCitaModalProps> = ({ onClose, onSuccess }) => {
                     
                     <div className={styles.formGroup}>
                         <label>Cliente</label>
-                        <select name="id_clie" value={formData.id_clie} onChange={handleChange} required>
+                        <select name="id_clie" value={formData.id_clie} onChange={handleChange} required className={styles.input} style={{padding: '10px', width: '100%', background: '#1a1a1a', color: 'white', border: '1px solid #444'}}>
                             <option value="">Seleccione un cliente...</option>
                             {clientes.map(c => (
                                 <option key={c.id_clie} value={c.id_clie}>{c.nom_clie} {c.apell_clie}</option>
@@ -103,7 +110,7 @@ const AddCitaModal: React.FC<AddCitaModalProps> = ({ onClose, onSuccess }) => {
 
                     <div className={styles.formGroup}>
                         <label>Barbero</label>
-                        <select name="id_bar" value={formData.id_bar} onChange={handleChange} required>
+                        <select name="id_bar" value={formData.id_bar} onChange={handleChange} required className={styles.input} style={{padding: '10px', width: '100%', background: '#1a1a1a', color: 'white', border: '1px solid #444'}}>
                             <option value="">Seleccione un barbero...</option>
                             {barberos.map(b => (
                                 <option key={b.id_bar} value={b.id_bar}>{b.nom_bar} {b.apell_bar}</option>
@@ -113,7 +120,7 @@ const AddCitaModal: React.FC<AddCitaModalProps> = ({ onClose, onSuccess }) => {
 
                     <div className={styles.formGroup}>
                         <label>Servicio</label>
-                        <select name="id_serv" value={formData.id_serv} onChange={handleChange} required>
+                        <select name="id_serv" value={formData.id_serv} onChange={handleChange} required className={styles.input} style={{padding: '10px', width: '100%', background: '#1a1a1a', color: 'white', border: '1px solid #444'}}>
                             <option value="">Seleccione un servicio...</option>
                             {servicios.map(s => (
                                 <option key={s.id_serv} value={s.id_serv}>{s.tipo}</option>
@@ -124,11 +131,11 @@ const AddCitaModal: React.FC<AddCitaModalProps> = ({ onClose, onSuccess }) => {
                     <div className={styles.formGrid}>
                         <div className={styles.formGroup}>
                             <label>Fecha</label>
-                            <input name="fecha" value={formData.fecha} onChange={handleChange} type="date" required />
+                            <input name="fecha" value={formData.fecha} onChange={handleChange} type="date" required style={{padding: '10px', width: '100%', background: '#1a1a1a', color: 'white', border: '1px solid #444'}}/>
                         </div>
                         <div className={styles.formGroup}>
                             <label>Hora</label>
-                            <input name="hora" value={formData.hora} onChange={handleChange} type="time" step="1800" required />
+                            <input name="hora" value={formData.hora} onChange={handleChange} type="time" step="1800" required style={{padding: '10px', width: '100%', background: '#1a1a1a', color: 'white', border: '1px solid #444'}}/>
                         </div>
                     </div>
                     

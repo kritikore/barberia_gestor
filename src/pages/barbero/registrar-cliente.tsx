@@ -71,7 +71,7 @@ const RegistrarClienteBarbero: NextPage = () => {
     };
 
     return (
-        <BarberLayout>
+        <>
             <Head><title>Registrar Cliente - Barbero</title></Head>
 
             <div style={{ maxWidth: '600px', margin: '0 auto' }}>
@@ -144,7 +144,7 @@ const RegistrarClienteBarbero: NextPage = () => {
                     </form>
                 </div>
             </div>
-        </BarberLayout>
+        </>
     );
 };
 

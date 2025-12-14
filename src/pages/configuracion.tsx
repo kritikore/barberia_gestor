@@ -2,106 +2,156 @@
 import React, { useState, useEffect } from 'react';
 import { NextPage } from 'next';
 import Head from 'next/head';
-import { FaCog, FaPaintBrush, FaUserShield, FaDatabase, FaFileAlt } from 'react-icons/fa';
-import { useTheme } from '@/context/ThemeContext'; // 🔑 Importar el hook de Tema
+import { useRouter } from 'next/router';
+import { FaStore, FaUserShield, FaSave, FaSignOutAlt, FaLock, FaCog, FaTools } from 'react-icons/fa';
+import AdminLayout from '@/components/AdminLayout';
+import styles from '@/styles/Configuracion.module.css';
 
-import layoutStyles from '@/styles/GlobalLayout.module.css';
-import styles from '@/styles/Configuracion.module.css'; 
-// Reutilizamos los estilos de Modal/Formulario
-import formStyles from '@/styles/Modal.module.css'; 
-
-// (Interfaz ConfigData - Asumimos que la tienes de la respuesta anterior)
+// (No necesitamos ThemeProvider aquí si el _app.tsx está bien configurado, 
+// pero ya que definimos un estilo fijo "Urbano", no usaremos el toggle).
 
 const ConfiguracionPage: NextPage = () => {
-    const moduleName = "Configuración"; 
-    
-    // 🔑 Usamos el hook del Tema
-    const { theme, toggleTheme } = useTheme();
+    const router = useRouter();
+    const [loading, setLoading] = useState(false);
 
-    // (Aquí iría la lógica de carga y guardado de REQ-CONF1: Datos del Negocio)
-    // const [formData, setFormData] = useState<ConfigData>(...);
-    // useEffect(() => { /* fetchData... */ }, []);
-    // const handleSubmit = async (e: React.FormEvent) => { /* Guardar datos... */ };
+    const [businessData, setBusinessData] = useState({
+        nombre: "The Gentleman's Cut",
+        telefono: "55-1234-5678",
+        email: "contacto@barberia.com"
+    });
+
+    useEffect(() => {
+        const savedData = localStorage.getItem('businessConfig');
+        if (savedData) setBusinessData(JSON.parse(savedData));
+    }, []);
+
+    const handleSaveBusiness = (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        setTimeout(() => {
+            localStorage.setItem('businessConfig', JSON.stringify(businessData));
+            alert("✅ Configuración guardada con éxito.");
+            setLoading(false);
+        }, 800);
+    };
+
+    const handleLogout = () => {
+        if(confirm("¿Cerrar sesión del sistema?")) router.push('/login');
+    };
 
     return (
         <>
-            <Head>
-                <title>{moduleName} - Barbería Gestor</title>
-            </Head>
+            <Head><title>Configuración | The Gentleman's Cut</title></Head>
             
-            <main className={layoutStyles.mainContent}> 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
-                    <h1>
-                        <FaCog style={{ marginRight: '10px', color: 'var(--color-accent)' }} /> 
-                        {moduleName} del Sistema
-                    </h1>
+            <div className={styles.container}>
+                
+                {/* ENCABEZADO PRINCIPAL */}
+                <div className={styles.mainHeader}>
+                    <FaCog size={45} color="var(--color-accent)" />
+                    <div>
+                        <h1>Configuración del Sistema</h1>
+                        <p>Personaliza los parámetros de tu barbería.</p>
+                    </div>
                 </div>
 
-                {/* ------------------------------------------- */}
-                {/* REQ-CONF8: Personalización Visual (Color) */}
-                {/* ------------------------------------------- */}
-                <div className={styles.sectionCard}>
-                    <h2 className={styles.sectionTitle}><FaPaintBrush /> Personalización Visual</h2>
-                    <div className={styles.themeToggle}>
-                        <span>Modo actual: {theme === 'dark' ? 'Oscuro (Urbano)' : 'Claro (Minimalista)'}</span>
+                {/* TARJETA 1: DATOS DEL NEGOCIO */}
+                <div className={styles.card}>
+                    <div className={styles.cardHeader}>
+                        <div className={styles.iconWrapper}><FaStore /></div>
+                        <div>
+                            <h2>Datos del Negocio</h2>
+                            <p style={{margin: 0, fontSize: '0.9em', color: 'var(--color-label)'}}>Información visible en tickets y reportes.</p>
+                        </div>
+                    </div>
+                    <form onSubmit={handleSaveBusiness}>
+                        <div className={styles.formGroup}>
+                            <label>Nombre Comercial</label>
+                            <input 
+                                className={styles.input}
+                                value={businessData.nombre} 
+                                onChange={(e) => setBusinessData({...businessData, nombre: e.target.value})} 
+                            />
+                        </div>
+                        <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px'}}>
+                            <div className={styles.formGroup}>
+                                <label>Teléfono Público</label>
+                                <input 
+                                    className={styles.input}
+                                    value={businessData.telefono} 
+                                    onChange={(e) => setBusinessData({...businessData, telefono: e.target.value})} 
+                                />
+                            </div>
+                            <div className={styles.formGroup}>
+                                <label>Correo de Contacto</label>
+                                <input 
+                                    className={styles.input}
+                                    value={businessData.email} 
+                                    onChange={(e) => setBusinessData({...businessData, email: e.target.value})} 
+                                />
+                            </div>
+                        </div>
+                        <div style={{textAlign: 'right', marginTop: '10px'}}>
+                            <button type="submit" className={styles.saveButton} disabled={loading}>
+                                {loading ? 'Guardando...' : <><FaSave /> Guardar Cambios</>}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                {/* TARJETA 2: PREFERENCIAS DEL SISTEMA */}
+                <div className={styles.card}>
+                    <div className={styles.cardHeader}>
+                        <div className={styles.iconWrapper}><FaTools /></div>
+                        <div>
+                            <h2>Preferencias</h2>
+                            <p style={{margin: 0, fontSize: '0.9em', color: 'var(--color-label)'}}>Ajustes de operación.</p>
+                        </div>
+                    </div>
+                    
+                    <div className={styles.prefRow}>
+                        <span className={styles.prefLabel}>Idioma del Sistema</span>
+                        <select className={styles.select} style={{width: 'auto'}}>
+                            <option value="es">Español (MX)</option>
+                            <option value="en">English (US)</option>
+                        </select>
+                    </div>
+                    <div className={styles.prefRow}>
+                        <span className={styles.prefLabel}>Moneda</span>
+                        <select className={styles.select} style={{width: 'auto'}}>
+                            <option value="mxn">Peso Mexicano ($)</option>
+                            <option value="usd">Dólar ($)</option>
+                        </select>
+                    </div>
+                </div>
+
+                {/* TARJETA 3: ZONA DE ADMINISTRADOR */}
+                <div className={styles.card} style={{ borderLeft: '4px solid var(--color-primary)' }}>
+                    <div className={styles.cardHeader}>
+                        <div className={styles.iconWrapper} style={{ color: 'var(--color-primary)', borderColor: 'var(--color-primary)' }}>
+                            <FaUserShield />
+                        </div>
+                        <div>
+                            <h2 style={{color: 'var(--color-primary)'}}>Zona de Seguridad</h2>
+                            <p style={{margin: 0, fontSize: '0.9em', color: 'var(--color-label)'}}>Gestión de cuenta administrativa.</p>
+                        </div>
+                    </div>
+                    <div style={{display: 'flex', gap: '20px', flexWrap: 'wrap'}}>
                         <button 
-                            onClick={toggleTheme} 
-                            className={formStyles.submitButton}
-                            style={{ backgroundColor: 'var(--color-primary)' }}
+                            className={styles.actionButton}
+                            onClick={() => alert("Abriendo modal de cambio de contraseña...")}
                         >
-                            Cambiar a Modo {theme === 'dark' ? 'Claro' : 'Oscuro'}
+                            <FaLock /> Cambiar Contraseña
+                        </button>
+                        <button 
+                            className={styles.dangerButton}
+                            onClick={handleLogout}
+                        >
+                            <FaSignOutAlt /> Cerrar Sesión
                         </button>
                     </div>
                 </div>
 
-                {/* ------------------------------------------- */}
-                {/* REQ-CONF1: Datos del Negocio (Formulario) */}
-                {/* ------------------------------------------- */}
-                <div className={styles.sectionCard}>
-                    <h2 className={styles.sectionTitle}>Datos del Negocio</h2>
-                    <p style={{ color: 'var(--color-label)', marginTop: '-15px', marginBottom: '20px' }}>
-                        Esta información aparecerá en el Sidebar y en los reportes.
-                    </p>
-                    {/* <form onSubmit={handleSubmit}> ... (Aquí iría tu formulario de REQ-CONF1) ... </form> */}
-                    <p style={{color: 'var(--color-label)'}}>(Aquí va el formulario de REQ-CONF1 para Nombre, Dirección, Teléfono...)</p>
-                </div>
-                
-                {/* ------------------------------------------- */}
-                {/* REQ-CONF3: Gestión de Usuarios y Roles (Login) */}
-                {/* ------------------------------------------- */}
-                <div className={styles.sectionCard}>
-                    <h2 className={styles.sectionTitle}><FaUserShield /> Usuarios y Roles</h2>
-                    <p style={{ color: 'var(--color-label)', marginBottom: '20px' }}>
-                        La gestión de usuarios (Barberos/Empleados) se realiza en el Módulo de Personal.
-                    </p>
-                    {/* (Puedes añadir un Link al módulo de Personal si quieres) */}
-                </div>
-
-                {/* ------------------------------------------- */}
-                {/* REQ-CONF7: Backups (Aspectos Técnicos) */}
-                {/* ------------------------------------------- */}
-                <div className={styles.sectionCard}>
-                    <h2 className={styles.sectionTitle}><FaDatabase /> Copias de Seguridad</h2>
-                    <p style={{ color: 'var(--color-label)', marginBottom: '20px' }}>
-                        Genera un respaldo de la base de datos PostgreSQL.
-                    </p>
-                    <button className={formStyles.submitButton} onClick={() => alert('Llamando a API de Backup... (Pendiente)')}>
-                        Generar Backup (.sql)
-                    </button>
-                </div>
-                
-                {/* ------------------------------------------- */}
-                {/* REQ-CONF9: Auditoría (Aspectos Técnicos) */}
-                {/* ------------------------------------------- */}
-                <div className={styles.sectionCard}>
-                    <h2 className={styles.sectionTitle}><FaFileAlt /> Auditoría del Sistema</h2>
-                    <p style={{ color: 'var(--color-label)', marginBottom: '20px' }}>
-                        Revisa los registros de acciones críticas (logins, eliminaciones, etc.). (Pendiente de implementar tabla `auditoria`).
-                    </p>
-                    {/* (Aquí iría una tabla de logs) */}
-                </div>
-
-            </main>
+            </div>
         </>
     );
 };

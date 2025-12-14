@@ -28,7 +28,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onToggle, isExpanded, onLogout }) => 
         { name: 'Citas', icon: <FaCalendarAlt />, path: '/citas' },
         { name: 'Clientes', icon: <FaUsers />, path: '/clientes' },
         { name: 'Inventario', icon: <FaBoxOpen />, path: '/inventario' },
-        { name: 'Insumos', icon: <FaFlask />, path: '/insumos' },
+        //{ name: 'Insumos', icon: <FaFlask />, path: '/insumos' },
         { name: 'Personal', icon: <FaUserTie />, path: '/personal' },
         { name: 'Servicios', icon: <FaCut />, path: '/servicios' },
        // { name: 'Historial', icon: <FaScroll />, path: '/historial' },
@@ -48,7 +48,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onToggle, isExpanded, onLogout }) => 
                 <div className={styles.logoContainer}>
                     <FaCut className={styles.logoIcon} />
                     {/* 🔑 CORRECCIÓN 2: Renderiza el texto del logo solo cuando está expandido */}
-                    {isExpanded && <span className={styles.logoText}>The Gen</span>} 
+                    {isExpanded && <span className={styles.logoText}>The Gentleman Cut</span>} 
                 </div>
 
                 {/* 🔑 CORRECCIÓN 3: El botón de colapso DEBE estar dentro del sidebar y visible en ambas vistas, 
@@ -84,25 +84,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onToggle, isExpanded, onLogout }) => 
                 </ul>
             </nav>
 
-            {/* -------------------- SECCIÓN DE USUARIO / LOGOUT -------------------- */}
-            <div className={styles.userSection}>
-                <div className={`${styles.userInfo} ${isExpanded ? styles.isExpanded : ''}`}>
-                    {/* Placeholder de Avatar, debes estilizar userAvatar en Sidebar.module.css */}
-                    <div className={styles.userAvatar}>A</div> 
-                    <div className={styles.userDetails}>
-                        <p className={styles.userName}>Administrador</p>
-                        <p className={styles.userEmail}>admin@barberia.com</p>
-                    </div>
-                </div>
-                <button
-                    className={styles.logoutButton}
-                    onClick={onLogout}
-                    title={isExpanded ? '' : 'Cerrar Sesión'}
-                >
-                    <span className={styles.icon}><FaSignOutAlt /></span>
-                    <span className={styles.text}>Cerrar Sesión</span>
-                </button>
-            </div>
+           
         </aside>
     );
 };
