@@ -1,0 +1,95 @@
+/* src/styles/Auth.module.css */
+
+.authContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background-color: #121212; /* Fondo muy oscuro */
+  background-image: radial-gradient(circle at center, #1a1a1a 0%, #000000 100%);
+  padding: 20px;
+}
+
+.authCard {
+  background-color: #1E1E1E; /* Tarjeta gris oscuro */
+  padding: 40px;
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+  width: 100%;
+  max-width: 400px;
+  border: 1px solid #333;
+}
+
+.errorMsg {
+  background-color: rgba(220, 53, 69, 0.1);
+  color: #ff6b6b;
+  border: 1px solid #ff6b6b;
+  padding: 10px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.inputGroup {
+  position: relative;
+  margin-bottom: 20px;
+}
+
+.inputGroup input {
+  width: 100%;
+  padding: 12px 15px 12px 45px; /* Espacio a la izquierda para el icono */
+  background-color: #2A2A2A;
+  border: 1px solid #444;
+  border-radius: 8px;
+  color: white;
+  font-size: 1rem;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.inputGroup input:focus {
+  outline: none;
+  border-color: #D4AF37; /* Color dorado al enfocar */
+  box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.2);
+}
+
+/* Icono dentro del input */
+.icon {
+  position: absolute;
+  left: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #888;
+  font-size: 1.2rem;
+  transition: color 0.3s;
+}
+
+.inputGroup input:focus + .icon,
+.inputGroup:focus-within .icon {
+  color: #D4AF37; /* Icono se pone dorado al escribir */
+}
+
+.authButton {
+  width: 100%;
+  padding: 12px;
+  background-color: #D4AF37; /* Dorado */
+  color: #000;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: transform 0.2s, background-color 0.2s;
+  margin-top: 10px;
+}
+
+.authButton:hover {
+  background-color: #c49f30;
+  transform: translateY(-2px);
+}
+
+.authButton:disabled {
+  background-color: #555;
+  cursor: not-allowed;
+  transform: none;
+}

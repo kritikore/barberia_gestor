@@ -1,11 +1,9 @@
-// src/pages/login.tsx
-
-import React, { useState, FormEvent } from 'react';
+import React, { useState } from 'react';
 import { NextPage } from 'next';
 import Head from 'next/head';
-import Link from 'next/link'; 
+import Link from 'next/link';
 import { useRouter } from 'next/router';
-import styles from '@/styles/Login.module.css'; 
+import styles from '@/styles/Login.module.css';
 
 // Definición de la interfaz del estado
 interface LoginFormState {
@@ -16,11 +14,12 @@ interface LoginFormState {
 // Definición del componente
 const LoginPage: NextPage = () => {
   const router = useRouter();
-  
+
   const [formState, setFormState] = useState<LoginFormState>({
     email: '',
     password: '',
   });
+  
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,52 +30,61 @@ const LoginPage: NextPage = () => {
     }));
   };
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+    setError('');
     setIsLoading(true);
 
-    // Acceso de desarrollo temporal
-    if (formState.email === 'dev@gestor.com' && formState.password === 'access') {
-        console.log("Acceso de Desarrollo concedido.");
-        router.push('/dashboard'); 
-        setIsLoading(false);
-        return; 
-    }
-
     try {
-      // Llamada a la API de autenticación (Login)
-      const response = await fetch('/api/auth/login', {
+      const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formState),
+        // CORRECCIÓN IMPORTANTE: Se envía formState, no FormData
+        body: JSON.stringify(formState) 
       });
 
-      const data = await response.json();
+      const data = await res.json();
 
-      if (!response.ok) {
-        throw new Error(data.message || 'Error de autenticación'); 
-      }
+      if (res.ok) {
+        console.log("Login exitoso, datos recibidos:", data.user); // 🔍 DEBUG
 
-      // Redirección basada en el rol
-      // 🔑 NUEVO: Guardar datos del usuario en localStorage para usarlos después
-            localStorage.setItem('userProfile', JSON.stringify(data.user));
+        // 1. Guardamos en localStorage
+        localStorage.setItem('usuario_activo', JSON.stringify(data.user));
 
-            // Redirección
+        // 2. Verificamos que se guardó correctamente antes de redirigir
+        const guardado = localStorage.getItem('usuario_activo');
+
+        if (guardado) {
+          console.log("Sesión guardada correctamente. Redirigiendo...");
+          // Pequeña pausa de seguridad de 100ms
+          setTimeout(() => {
             if (data.user.role === 'admin') {
-                router.push('/dashboard');
+              router.push('/dashboard');
             } else {
-                router.push('/barbero/dashboard');
+              router.push('/barbero/dashboard');
             }
-      
-    } catch (err: any) {
-      setError(err.message);
+          }, 100);
+        } else {
+          setError("Error al guardar la sesión en el navegador.");
+          setIsLoading(false);
+        }
+
+      } else {
+        setError(data.message || 'Error al iniciar sesión');
+        setIsLoading(false);
+      }
+    } catch (err) {
+      console.error(err);
+      setError('Error de conexión con el servidor');
       setIsLoading(false);
     }
   };
 
   return (
     <div className={styles.loginContainer}>
+        <Head>
+            <title>Iniciar Sesión</title>
+        </Head>
       <div className={styles.loginBox}>
         
         <h1>💈 Barbería Gestor</h1>
@@ -89,8 +97,8 @@ const LoginPage: NextPage = () => {
               className={styles.loginInput}
               id="email"
               name="email"
-              type="text"
-              placeholder="administrador o usuario"
+              type="text" // Cambiado a text para aceptar user o email
+              placeholder="dev@gestor.com"
               value={formState.email}
               onChange={handleChange}
               required
@@ -124,7 +132,7 @@ const LoginPage: NextPage = () => {
         {/* Enlace a la página de registro */}
         <div style={{ marginTop: '25px', textAlign: 'center', color: 'var(--color-label)' }}>
             <p>
-                ¿Eres un nuevo empleado?{' '}
+                ¿OLVIDASTE TU CONTRASEÑA?{' '}
                 <Link 
                     href="/register" 
                     style={{ 
@@ -134,7 +142,7 @@ const LoginPage: NextPage = () => {
                         cursor: 'pointer'
                     }}
                 >
-                    Regístrate aquí
+                    Recuperala aqui
                 </Link>
             </p>
         </div>
@@ -143,5 +151,4 @@ const LoginPage: NextPage = () => {
   );
 };
 
-// 🔑 ESTA LÍNEA ES CRÍTICA PARA SOLUCIONAR TU ERROR:
 export default LoginPage;

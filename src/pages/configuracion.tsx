@@ -1,130 +1,146 @@
-// src/pages/configuracion.tsx
 import React, { useState, useEffect } from 'react';
 import { NextPage } from 'next';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { FaStore, FaUserShield, FaSave, FaSignOutAlt, FaLock, FaCog, FaTools } from 'react-icons/fa';
+import { FaUserCog, FaUserShield, FaSave, FaSignOutAlt, FaLock, FaKey } from 'react-icons/fa';
 import AdminLayout from '@/components/AdminLayout';
 import styles from '@/styles/Configuracion.module.css';
-
-// (No necesitamos ThemeProvider aquí si el _app.tsx está bien configurado, 
-// pero ya que definimos un estilo fijo "Urbano", no usaremos el toggle).
 
 const ConfiguracionPage: NextPage = () => {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
 
-    const [businessData, setBusinessData] = useState({
-        nombre: "The Gentleman's Cut",
-        telefono: "55-1234-5678",
-        email: "contacto@barberia.com"
+    // Estado para Datos del Perfil (Nombre y Email)
+    const [adminData, setAdminData] = useState({
+        id_bar: 0,
+        nom_bar: '',
+        email: ''
     });
 
+    // Estado para el Cambio de Contraseña
+    const [passData, setPassData] = useState({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+    });
+
+    // Cargar datos al iniciar
     useEffect(() => {
-        const savedData = localStorage.getItem('businessConfig');
-        if (savedData) setBusinessData(JSON.parse(savedData));
+        const stored = localStorage.getItem('usuario_activo');
+        if (stored) {
+            setAdminData(JSON.parse(stored));
+        }
     }, []);
 
-    const handleSaveBusiness = (e: React.FormEvent) => {
+    // --- FUNCIÓN 1: ACTUALIZAR NOMBRE Y CORREO ---
+    const handleSaveProfile = (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
+        
+        // Simulamos la petición a la API (o puedes crear una real PUT /api/personal)
         setTimeout(() => {
-            localStorage.setItem('businessConfig', JSON.stringify(businessData));
-            alert("✅ Configuración guardada con éxito.");
+            localStorage.setItem('usuario_activo', JSON.stringify(adminData));
+            alert("✅ Perfil actualizado correctamente.");
             setLoading(false);
         }, 800);
     };
 
+    // --- FUNCIÓN 2: CAMBIAR CONTRASEÑA (Lógica real) ---
+    const handleChangePassword = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        if (passData.newPassword !== passData.confirmPassword) {
+            return alert("⚠️ Las nuevas contraseñas no coinciden");
+        }
+        if (passData.newPassword.length < 6) {
+            return alert("⚠️ La contraseña debe tener al menos 6 caracteres");
+        }
+
+        setLoading(true);
+        try {
+            const res = await fetch('/api/auth/change-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id_bar: adminData.id_bar,
+                    currentPassword: passData.currentPassword,
+                    newPassword: passData.newPassword
+                })
+            });
+
+            const data = await res.json();
+
+            if (res.ok) {
+                alert("✅ Contraseña actualizada. Por seguridad, inicia sesión de nuevo.");
+                localStorage.removeItem('usuario_activo');
+                router.push('/');
+            } else {
+                alert("❌ Error: " + data.message);
+            }
+        } catch (error) {
+            console.error(error);
+            alert("Error de conexión");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleLogout = () => {
-        if(confirm("¿Cerrar sesión del sistema?")) router.push('/login');
+        if(confirm("¿Cerrar sesión del sistema?")) {
+            localStorage.removeItem('usuario_activo');
+            router.push('/');
+        }
     };
 
     return (
         <>
-            <Head><title>Configuración | The Gentleman's Cut</title></Head>
+            <Head><title>Configuración | Admin</title></Head>
             
             <div className={styles.container}>
                 
-                {/* ENCABEZADO PRINCIPAL */}
                 <div className={styles.mainHeader}>
-                    <FaCog size={45} color="var(--color-accent)" />
+                    <FaUserCog size={45} color="var(--color-accent)" />
                     <div>
-                        <h1>Configuración del Sistema</h1>
-                        <p>Personaliza los parámetros de tu barbería.</p>
+                        <h1>Configuración de Cuenta</h1>
+                        <p>Administra tus datos personales y seguridad.</p>
                     </div>
                 </div>
 
-                {/* TARJETA 1: DATOS DEL NEGOCIO */}
+                {/* --- MÓDULO 1: DATOS DE PERFIL --- */}
                 <div className={styles.card}>
                     <div className={styles.cardHeader}>
-                        <div className={styles.iconWrapper}><FaStore /></div>
+                        <div className={styles.iconWrapper}><FaUserCog /></div>
                         <div>
-                            <h2>Datos del Negocio</h2>
-                            <p style={{margin: 0, fontSize: '0.9em', color: 'var(--color-label)'}}>Información visible en tickets y reportes.</p>
+                            <h2>Perfil de Usuario</h2>
+                            <p style={{margin: 0, fontSize: '0.9em', color: 'var(--color-label)'}}>Edita tu nombre y correo de acceso.</p>
                         </div>
                     </div>
-                    <form onSubmit={handleSaveBusiness}>
+                    <form onSubmit={handleSaveProfile}>
                         <div className={styles.formGroup}>
-                            <label>Nombre Comercial</label>
+                            <label>Nombre de Usuario</label>
                             <input 
                                 className={styles.input}
-                                value={businessData.nombre} 
-                                onChange={(e) => setBusinessData({...businessData, nombre: e.target.value})} 
+                                value={adminData.nom_bar} 
+                                onChange={(e) => setAdminData({...adminData, nom_bar: e.target.value})} 
                             />
                         </div>
-                        <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px'}}>
-                            <div className={styles.formGroup}>
-                                <label>Teléfono Público</label>
-                                <input 
-                                    className={styles.input}
-                                    value={businessData.telefono} 
-                                    onChange={(e) => setBusinessData({...businessData, telefono: e.target.value})} 
-                                />
-                            </div>
-                            <div className={styles.formGroup}>
-                                <label>Correo de Contacto</label>
-                                <input 
-                                    className={styles.input}
-                                    value={businessData.email} 
-                                    onChange={(e) => setBusinessData({...businessData, email: e.target.value})} 
-                                />
-                            </div>
+                        <div className={styles.formGroup}>
+                            <label>Correo Electrónico</label>
+                            <input 
+                                className={styles.input}
+                                value={adminData.email} 
+                                onChange={(e) => setAdminData({...adminData, email: e.target.value})} 
+                            />
                         </div>
                         <div style={{textAlign: 'right', marginTop: '10px'}}>
                             <button type="submit" className={styles.saveButton} disabled={loading}>
-                                {loading ? 'Guardando...' : <><FaSave /> Guardar Cambios</>}
+                                {loading ? 'Guardando...' : <><FaSave /> Guardar Datos</>}
                             </button>
                         </div>
                     </form>
                 </div>
 
-                {/* TARJETA 2: PREFERENCIAS DEL SISTEMA */}
-                <div className={styles.card}>
-                    <div className={styles.cardHeader}>
-                        <div className={styles.iconWrapper}><FaTools /></div>
-                        <div>
-                            <h2>Preferencias</h2>
-                            <p style={{margin: 0, fontSize: '0.9em', color: 'var(--color-label)'}}>Ajustes de operación.</p>
-                        </div>
-                    </div>
-                    
-                    <div className={styles.prefRow}>
-                        <span className={styles.prefLabel}>Idioma del Sistema</span>
-                        <select className={styles.select} style={{width: 'auto'}}>
-                            <option value="es">Español (MX)</option>
-                            <option value="en">English (US)</option>
-                        </select>
-                    </div>
-                    <div className={styles.prefRow}>
-                        <span className={styles.prefLabel}>Moneda</span>
-                        <select className={styles.select} style={{width: 'auto'}}>
-                            <option value="mxn">Peso Mexicano ($)</option>
-                            <option value="usd">Dólar ($)</option>
-                        </select>
-                    </div>
-                </div>
-
-                {/* TARJETA 3: ZONA DE ADMINISTRADOR */}
+                {/* --- MÓDULO 2: SEGURIDAD (PASSWORD INTEGRADO) --- */}
                 <div className={styles.card} style={{ borderLeft: '4px solid var(--color-primary)' }}>
                     <div className={styles.cardHeader}>
                         <div className={styles.iconWrapper} style={{ color: 'var(--color-primary)', borderColor: 'var(--color-primary)' }}>
@@ -132,21 +148,66 @@ const ConfiguracionPage: NextPage = () => {
                         </div>
                         <div>
                             <h2 style={{color: 'var(--color-primary)'}}>Zona de Seguridad</h2>
-                            <p style={{margin: 0, fontSize: '0.9em', color: 'var(--color-label)'}}>Gestión de cuenta administrativa.</p>
+                            <p style={{margin: 0, fontSize: '0.9em', color: 'var(--color-label)'}}>Cambio de contraseña y sesión.</p>
                         </div>
                     </div>
-                    <div style={{display: 'flex', gap: '20px', flexWrap: 'wrap'}}>
-                        <button 
-                            className={styles.actionButton}
-                            onClick={() => alert("Abriendo modal de cambio de contraseña...")}
-                        >
-                            <FaLock /> Cambiar Contraseña
-                        </button>
+
+                    {/* Formulario de Cambio de Contraseña Incrustado */}
+                    <div style={{ background: '#1a1a1a', padding: '20px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #333' }}>
+                        <h3 style={{color:'white', marginTop:0, fontSize:'1.1rem', display:'flex', alignItems:'center', gap:8}}>
+                            <FaKey /> Cambiar Contraseña
+                        </h3>
+                        
+                        <form onSubmit={handleChangePassword}>
+                            <div className={styles.formGroup}>
+                                <label>Contraseña Actual</label>
+                                <input 
+                                    type="password" 
+                                    className={styles.input}
+                                    required 
+                                    value={passData.currentPassword}
+                                    onChange={e => setPassData({...passData, currentPassword: e.target.value})}
+                                />
+                            </div>
+                            <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap: 20}}>
+                                <div className={styles.formGroup}>
+                                    <label>Nueva Contraseña</label>
+                                    <input 
+                                        type="password" 
+                                        className={styles.input}
+                                        required 
+                                        value={passData.newPassword}
+                                        onChange={e => setPassData({...passData, newPassword: e.target.value})}
+                                    />
+                                </div>
+                                <div className={styles.formGroup}>
+                                    <label>Confirmar Nueva</label>
+                                    <input 
+                                        type="password" 
+                                        className={styles.input}
+                                        required 
+                                        value={passData.confirmPassword}
+                                        onChange={e => setPassData({...passData, confirmPassword: e.target.value})}
+                                    />
+                                </div>
+                            </div>
+                            <button 
+                                type="submit" 
+                                className={styles.actionButton} 
+                                style={{marginTop: 10, width:'100%', justifyContent:'center'}}
+                                disabled={loading}
+                            >
+                                <FaLock /> Actualizar Contraseña
+                            </button>
+                        </form>
+                    </div>
+
+                    <div style={{borderTop: '1px solid #333', paddingTop: 20, textAlign: 'right'}}>
                         <button 
                             className={styles.dangerButton}
                             onClick={handleLogout}
                         >
-                            <FaSignOutAlt /> Cerrar Sesión
+                            <FaSignOutAlt /> Cerrar Sesión del Sistema
                         </button>
                     </div>
                 </div>

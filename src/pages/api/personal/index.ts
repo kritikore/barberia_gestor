@@ -1,66 +1,74 @@
-// src/pages/api/personal/index.ts
 import { NextApiRequest, NextApiResponse } from 'next';
 import { db } from '@/lib/db';
 import bcrypt from 'bcryptjs';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-
-    // --- MÉTODO GET: Listar todo el personal ---
+    
+    // --- GET: Listar Barberos ---
     if (req.method === 'GET') {
         try {
-            // Consulta que une barberos con sus servicios del mes actual
-            const query = `
-                SELECT 
-                    b.*, 
-                    COALESCE(COUNT(sr.id_dese), 0) AS "serviciosMes",
-                    COALESCE(SUM(sr.total), 0) AS "ingresosGenerados"
-                FROM barber b
-                LEFT JOIN SERVICIO_REALIZADO sr 
-                    ON b.id_bar = sr.id_bar
-                    AND EXTRACT(MONTH FROM sr.FECHA) = EXTRACT(MONTH FROM CURRENT_DATE)
-                    AND EXTRACT(YEAR FROM sr.FECHA) = EXTRACT(YEAR FROM CURRENT_DATE)
-                GROUP BY b.id_bar
-                ORDER BY b.estado ASC, b.nom_bar ASC;
-            `;
-            const result = await db.query(query);
+            const result = await db.query(`
+                SELECT * FROM barber 
+                WHERE email NOT LIKE 'del_%' 
+                ORDER BY id_bar DESC
+            `);
             return res.status(200).json(result.rows);
         } catch (error) {
-            console.error("Error en API (GET personal):", error);
-            return res.status(500).json({ message: 'Error interno del servidor' });
+            console.error("Error al listar:", error);
+            return res.status(500).json({ message: 'Error al listar personal' });
         }
     }
 
-    // --- MÉTODO POST: Crear nuevo barbero ---
+    // --- POST: Crear Nuevo Barbero ---
     if (req.method === 'POST') {
-        const { nom_bar, apell_bar, tel_bar, edad_bar, email, password, posicion, estado } = req.body;
+        console.log("📝 Intentando crear barbero:", req.body);
 
-        if (!nom_bar || !apell_bar || !tel_bar || !email || !password) {
-            return res.status(400).json({ message: 'Nombre, apellido, teléfono, email y contraseña son obligatorios.' });
+        const { nom_bar, apell_bar, email, password } = req.body;
+
+        if (!nom_bar || !email || !password) {
+            return res.status(400).json({ message: 'Faltan datos obligatorios' });
         }
 
         try {
-            // Hashear la contraseña
+            // 1. Encriptar contraseña
             const salt = await bcrypt.genSalt(10);
             const hashedPassword = await bcrypt.hash(password, salt);
 
+            // 2. Insertar
+            // ⚠️ CORRECCIÓN: Agregamos 'tel_bar' y 'edad_bar' con datos por defecto
+            // para que la base de datos no rechace el registro.
             const query = `
-                INSERT INTO barber (nom_bar, apell_bar, tel_bar, edad_bar, email, password, posicion, estado)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-                RETURNING *; 
+                INSERT INTO barber (
+                    nom_bar, apell_bar, email, password, 
+                    posicion, estado, 
+                    tel_bar, edad_bar, -- Campos obligatorios agregados
+                    st_navajas, st_papel, st_talco, st_aftershave, st_desinfectante
+                )
+                VALUES (
+                    $1, $2, $3, $4, 
+                    'Barbero', 'Activo', 
+                    '0000000000', 25, -- Teléfono dummy y Edad por defecto (25 años)
+                    200, 500, 180, 180, 500
+                )
+                RETURNING id_bar;
             `;
-            const values = [nom_bar, apell_bar, tel_bar, parseInt(edad_bar, 10), email, hashedPassword, posicion, estado || 'Activo'];
             
-            const result = await db.query(query, values);
-            return res.status(201).json(result.rows[0]);
+            await db.query(query, [nom_bar, apell_bar || '', email, hashedPassword]);
+            
+            console.log("✅ Barbero creado con éxito");
+            return res.status(201).json({ message: 'Barbero creado exitosamente' });
 
         } catch (error: any) {
-            console.error("Error en API (POST personal):", error);
-            if (error.code === '23505') { // Error de email único
-                 return res.status(409).json({ message: 'Error: El email ya está registrado.' });
+            console.error("❌ ERROR AL CREAR BARBERO:", error); 
+            
+            if (error.code === '23505') {
+                return res.status(400).json({ message: 'El correo electrónico ya está registrado.' });
             }
-            return res.status(500).json({ message: 'Error interno del servidor' });
+            if (error.code === '42703') {
+                return res.status(500).json({ message: 'Faltan columnas de insumos en la BD. Ejecuta el SQL de actualización.' });
+            }
+
+            return res.status(500).json({ message: 'Error interno al crear barbero', detail: error.message });
         }
     }
-    
-    return res.status(405).json({ message: 'Método no permitido' });
 }

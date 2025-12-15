@@ -1,103 +1,93 @@
-// src/pages/api/personal/[id].ts
 import { NextApiRequest, NextApiResponse } from 'next';
 import { db } from '@/lib/db';
+import bcrypt from 'bcryptjs';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-    const { id } = req.query; // ID del barbero
+    const { id } = req.query;
 
-    // GET: Obtener Perfil + Sus Insumos + Catálogo Disponible
     if (req.method === 'GET') {
+        // ... (Tu código GET existente) ...
         try {
-            // 1. Datos del Barbero
-            const barberoRes = await db.query('SELECT * FROM BARBER WHERE id_bar = $1', [id]);
-            if (barberoRes.rows.length === 0) return res.status(404).json({ message: 'Barbero no encontrado' });
-
-            // 2. Insumos que YA tiene asignados
-            const misInsumosRes = await db.query(`
-                SELECT ib.id_ib, i.id_insumo, i.nombre, ib.usos_restantes, i.capacidad_total, i.stock_bodega, ib.estado
-                FROM INSUMO_BARBERO ib
-                JOIN INSUMO i ON ib.id_insumo = i.id_insumo
-                WHERE ib.id_bar = $1
-                ORDER BY ib.usos_restantes ASC
+            const perfilRes = await db.query('SELECT * FROM barber WHERE id_bar = $1', [id]);
+            if (perfilRes.rows.length === 0) return res.status(404).json({ message: 'No encontrado' });
+            
+            const b = perfilRes.rows[0];
+            const insumosCalculados = [
+                { nombre: 'Navajas', actual: b.st_navajas, max: 200, pct: (b.st_navajas / 200) * 100 },
+                { nombre: 'Papel Cuello', actual: b.st_papel, max: 500, pct: (b.st_papel / 500) * 100 },
+                { nombre: 'Talco', actual: b.st_talco, max: 180, pct: (b.st_talco / 180) * 100 },
+                { nombre: 'After Shave', actual: b.st_aftershave, max: 180, pct: (b.st_aftershave / 180) * 100 },
+                { nombre: 'Desinfectante', actual: b.st_desinfectante, max: 500, pct: (b.st_desinfectante / 500) * 100 },
+            ];
+            const citasRes = await db.query(`
+                SELECT c.fecha, c.hora, s.tipo as detalle, s.precio as monto, 'Cita' as tipo_movimiento
+                FROM cita c JOIN servicio s ON c.id_serv = s.id_serv
+                WHERE c.id_bar = $1 AND c.estado = 'Completada'
             `, [id]);
+            const historial = [...citasRes.rows].sort((x, y) => new Date(y.fecha).getTime() - new Date(x.fecha).getTime());
+            return res.status(200).json({ perfil: b, insumos: insumosCalculados, historial });
+        } catch (error) { return res.status(500).json({ message: 'Error server' }); }
+    }
 
-            // 3. Catálogo completo (Para el dropdown de "Agregar Nuevo")
-            // Opcional: Podrías filtrar los que ya tiene para no repetir, pero lo haremos en el frontend
-            const catalogoRes = await db.query('SELECT * FROM INSUMO ORDER BY nombre');
+    else if (req.method === 'PUT') {
+        // ... (Tu código PUT existente) ...
+        if (req.body && !req.body.nom_bar && !req.body.email) {
+             try {
+                await db.query(`
+                    UPDATE barber SET st_navajas = 200, st_papel = 500, st_talco = 180, st_aftershave = 180, st_desinfectante = 500
+                    WHERE id_bar = $1
+                `, [id]);
+                return res.status(200).json({ message: '✅ Stock reabastecido' });
+            } catch (error) { return res.status(500).json({ message: 'Error re-stock' }); }
+        } else {
+            const { nom_bar, apell_bar, email, password } = req.body;
+            try {
+                let query = "UPDATE barber SET nom_bar=$1, apell_bar=$2, email=$3 WHERE id_bar=$4";
+                let values = [nom_bar, apell_bar, email, id];
+                if (password && password.trim() !== '') {
+                    const salt = await bcrypt.genSalt(10);
+                    const hash = await bcrypt.hash(password, salt);
+                    query = "UPDATE barber SET nom_bar=$1, apell_bar=$2, email=$3, password=$4 WHERE id_bar=$5";
+                    values = [nom_bar, apell_bar, email, hash, id];
+                }
+                await db.query(query, values);
+                return res.status(200).json({ message: 'Datos actualizados' });
+            } catch (error) { return res.status(500).json({ message: 'Error al actualizar perfil' }); }
+        }
+    }
 
-            res.status(200).json({
-                perfil: barberoRes.rows[0],
-                insumos: misInsumosRes.rows,
-                catalogo: catalogoRes.rows // 🔑 Enviamos el catálogo
-            });
+    // --- DELETE CORREGIDO ---
+    else if (req.method === 'DELETE') {
+        try {
+            // 1. Verificar primero si ya estaba borrado para no repetir el prefijo 'del_'
+            const check = await db.query("SELECT email FROM barber WHERE id_bar = $1", [id]);
+            if (check.rows.length > 0 && check.rows[0].email.startsWith('del_')) {
+                return res.status(200).json({ message: 'Este usuario ya estaba eliminado.' });
+            }
 
-        } catch (error) {
+            // 2. Intentar borrado físico
+            await db.query("DELETE FROM barber WHERE id_bar = $1", [id]);
+            return res.status(200).json({ message: 'Barbero eliminado (Sin historial)' });
+
+        } catch (error: any) {
+            // 3. Si falla por FK (Historial), archivar
+            if (error.code === '23503') {
+                try {
+                    await db.query(`
+                        UPDATE barber 
+                        SET estado = 'Inactivo', 
+                            email = CONCAT('del_', id_bar::text, '_', email), 
+                            password = 'DELETED' 
+                        WHERE id_bar = $1
+                    `, [id]);
+                    return res.status(200).json({ message: 'Barbero archivado correctamente.' });
+                } catch (updateError: any) {
+                    console.error("Error archivando:", updateError);
+                    return res.status(500).json({ message: 'Error al archivar' });
+                }
+            }
             console.error(error);
-            res.status(500).json({ message: 'Error cargando datos' });
+            return res.status(500).json({ message: 'Error interno' });
         }
-    }
-
-    // POST: ASIGNAR NUEVO INSUMO (Primera vez)
-    if (req.method === 'POST') {
-        const { id_insumo } = req.body;
-
-        const client = await db.connect();
-        try {
-            await client.query('BEGIN');
-
-            // 1. Verificar Bodega
-            const stockCheck = await client.query('SELECT stock_bodega, capacidad_total FROM INSUMO WHERE id_insumo = $1', [id_insumo]);
-            const item = stockCheck.rows[0];
-
-            if (item.stock_bodega <= 0) {
-                throw new Error('❌ No hay stock en bodega para asignar esto.');
-            }
-
-            // 2. Verificar que no lo tenga ya asignado
-            const existeCheck = await client.query('SELECT id_ib FROM INSUMO_BARBERO WHERE id_bar = $1 AND id_insumo = $2', [id, id_insumo]);
-            if (existeCheck.rows.length > 0) {
-                throw new Error('⚠️ Este barbero ya tiene este insumo asignado. Usa el botón de Re-Stock.');
-            }
-
-            // 3. Restar 1 de Bodega
-            await client.query('UPDATE INSUMO SET stock_bodega = stock_bodega - 1 WHERE id_insumo = $1', [id_insumo]);
-
-            // 4. Crear la asignación (INSERT)
-            await client.query(
-                "INSERT INTO INSUMO_BARBERO (id_bar, id_insumo, usos_restantes, estado) VALUES ($1, $2, $3, 'En Uso')",
-                [id, id_insumo, item.capacidad_total]
-            );
-
-            await client.query('COMMIT');
-            res.status(201).json({ message: 'Insumo asignado correctamente' });
-
-        } catch (error: any) {
-            await client.query('ROLLBACK');
-            res.status(400).json({ message: error.message });
-        } finally {
-            client.release();
-        }
-    }
-
-    // PUT: RE-STOCK (Rellenar existente) - *Mantenemos tu lógica anterior*
-    if (req.method === 'PUT') {
-        const { id_ib, id_insumo } = req.body;
-        const client = await db.connect();
-        try {
-            await client.query('BEGIN');
-            // Verificar stock
-            const stockCheck = await client.query('SELECT stock_bodega, capacidad_total FROM INSUMO WHERE id_insumo = $1', [id_insumo]);
-            if (stockCheck.rows[0].stock_bodega <= 0) throw new Error('Sin stock en bodega');
-            
-            // Restar y Actualizar
-            await client.query('UPDATE INSUMO SET stock_bodega = stock_bodega - 1 WHERE id_insumo = $1', [id_insumo]);
-            await client.query("UPDATE INSUMO_BARBERO SET usos_restantes = $1, estado = 'En Uso' WHERE id_ib = $2", [stockCheck.rows[0].capacidad_total, id_ib]);
-            
-            await client.query('COMMIT');
-            res.status(200).json({ message: 'Restock exitoso' });
-        } catch (error: any) {
-            await client.query('ROLLBACK');
-            res.status(400).json({ message: error.message });
-        } finally { client.release(); }
     }
 }

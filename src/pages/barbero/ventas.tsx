@@ -1,255 +1,203 @@
-// src/pages/barbero/ventas.tsx
-
 import React, { useState, useEffect } from 'react';
-import { NextPage } from 'next';
-import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { FaShoppingCart, FaArrowLeft, FaTrash, FaCheckCircle, FaSearch } from 'react-icons/fa';
-import BarberLayout from '@/components/BarberLayout';
-import SaleProductCard from '@/components/SaleProductCard'; 
+import AdminLayout from '@/components/AdminLayout';
+import { useBarbero } from '@/hooks/useBarbero';
+import { FaShoppingBag, FaTrash, FaHome, FaBoxOpen, FaExclamationTriangle } from 'react-icons/fa';
 
-interface Producto {
-    id_prod: number;
-    nombre: string;
-    marca: string;
-    precio: number;
-    stock: number;
-}
-
-interface CartItem extends Producto {
-    cantidadCarrito: number;
-}
-
-const VentasPage: NextPage = () => {
+export default function TiendaBarbero() {
     const router = useRouter();
+    const { barbero } = useBarbero();
     
-    const [productos, setProductos] = useState<Producto[]>([]);
-    const [filteredProductos, setFilteredProductos] = useState<Producto[]>([]);
-    const [cart, setCart] = useState<CartItem[]>([]);
-    const [searchTerm, setSearchTerm] = useState('');
+    const [productos, setProductos] = useState<any[]>([]);
+    const [carrito, setCarrito] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [processing, setProcessing] = useState(false);
+    const [debugData, setDebugData] = useState<string>(''); // Para ver errores en pantalla
     
-    // Estado para notificación flotante
-    const [notification, setNotification] = useState<{show: boolean, message: string}>({ show: false, message: '' });
-
-    // Cargar inventario
-    const fetchProductos = async () => {
+    // 1. Cargar Inventario GLOBAL
+    const cargarInventario = async () => {
+        setLoading(true);
         try {
-            const response = await fetch('/api/inventario'); 
-            if (response.ok) {
-                const data = await response.json();
-                const mapeados = data.map((p: any) => ({
-                    id_prod: p.id_prod,
-                    nombre: p.nom_prod,
-                    marca: p.marc_prod,
-                    precio: parseFloat(p.precio_prod),
-                    stock: p.stock
-                }));
-                setProductos(mapeados);
-                setFilteredProductos(mapeados);
+            const res = await fetch('/api/insumos');
+            const data = await res.json();
+            
+            console.log("📦 DATOS CRUDOS DE LA API:", data); // <--- MIRA ESTO EN F12
+
+            if (Array.isArray(data)) {
+                // Filtro "Inteligente": Busca stock en varias posibles columnas y convierte a número
+                const disponibles = data.filter((p: any) => {
+                    // Intentamos leer el stock de varias formas por si el nombre cambió
+                    const stockReal = Number(p.stock_bodega || p.stock || p.cantidad || 0);
+                    // Solo mostramos si hay stock positivo
+                    return stockReal > 0;
+                });
+                
+                if (disponibles.length === 0 && data.length > 0) {
+                    setDebugData("Hay productos en BD pero todos tienen Stock 0 o el nombre de la columna stock_bodega está mal.");
+                }
+
+                setProductos(disponibles);
+            } else {
+                console.error("La API no devolvió una lista:", data);
+                setProductos([]);
             }
-        } catch (error) {
-            console.error(error);
+        } catch (error: any) {
+            console.error("Error cargando inventario:", error);
+            setDebugData("Error de conexión: " + error.message);
         } finally {
             setLoading(false);
         }
     };
 
-    useEffect(() => {
-        fetchProductos();
-    }, []);
+    useEffect(() => { cargarInventario(); }, []);
 
-    // Filtro de búsqueda
-    useEffect(() => {
-        const term = searchTerm.toLowerCase();
-        const filtered = productos.filter(p => 
-            p.nombre.toLowerCase().includes(term) || 
-            p.marca.toLowerCase().includes(term)
-        );
-        setFilteredProductos(filtered);
-    }, [searchTerm, productos]);
-
-    // Agregar al carrito
-    const addToCart = (producto: Producto) => {
-        setCart(prev => {
-            const exists = prev.find(item => item.id_prod === producto.id_prod);
-            if (exists) {
-                if (exists.cantidadCarrito < producto.stock) {
-                    return prev.map(item => 
-                        item.id_prod === producto.id_prod 
-                            ? { ...item, cantidadCarrito: item.cantidadCarrito + 1 } 
-                            : item
-                    );
-                } else {
-                    alert("No hay suficiente stock disponible.");
-                    return prev;
-                }
-            }
-            return [...prev, { ...producto, cantidadCarrito: 1 }];
-        });
-    };
-
-    // Remover del carrito
-    const removeFromCart = (id: number) => {
-        setCart(prev => prev.filter(item => item.id_prod !== id));
-    };
-
-    const totalVenta = cart.reduce((sum, item) => sum + (item.precio * item.cantidadCarrito), 0);
-
-    // Procesar Venta
-    const handleCobrar = async () => {
-        if (cart.length === 0) return;
-        setProcessing(true);
-
+    const procesarVenta = async () => {
+        if(carrito.length === 0) return;
+        
         try {
-            const response = await fetch('/api/barbero/registrar-venta', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    carrito: cart.map(item => ({
-                        id_prod: item.id_prod,
-                        cantidad: item.cantidadCarrito,
-                        precio: item.precio
-                    })),
-                    total: totalVenta,
-                    id_bar: 1 
-                }),
-            });
+            const promesas = carrito.map(item => fetch(`/api/insumos/${item.id_insumo}`, {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ 
+                    ...item,
+                    // Aseguramos leer el stock correcto para restarlo
+                    stock_bodega: Number(item.stock_bodega || item.stock || 0) - item.cantidad ,
 
-            if (!response.ok) throw new Error('Error al procesar venta');
+                    id_bar: barbero.id_bar,       // Quién vende
+                cantidad_venta: item.cantidad, // Cuántos vende
+                precio_venta: item.costo || item.precio // A cómo lo vende
+                })
+            }));
 
-            // Mostrar notificación de éxito
-            setNotification({ show: true, message: `Venta de $${totalVenta.toFixed(2)} registrada con éxito.` });
-            setTimeout(() => setNotification({ show: false, message: '' }), 3000);
+            await Promise.all(promesas);
+            alert("✅ Venta registrada correctamente");
+            setCarrito([]);
+            cargarInventario(); 
 
-            setCart([]); 
-            fetchProductos(); 
+        } catch(e) { alert("Error al procesar venta"); }
+    };
 
-        } catch (error) {
-            alert('Error al registrar la venta.');
-        } finally {
-            setProcessing(false);
+    const agregar = (p: any) => {
+        const enCarro = carrito.find(c => c.id_insumo === p.id_insumo);
+        const cantidadActual = enCarro ? enCarro.cantidad : 0;
+        const stockDisponible = Number(p.stock_bodega || p.stock || 0);
+        
+        if (cantidadActual + 1 > stockDisponible) return alert("No hay suficiente stock en bodega");
+
+        if(enCarro) {
+            setCarrito(carrito.map(c => c.id_insumo===p.id_insumo ? {...c, cantidad: c.cantidad+1} : c));
+        } else {
+            setCarrito([...carrito, {...p, cantidad:1}]);
         }
     };
 
+    if (!barbero) return null;
+
     return (
         <>
-            <Head><title>Registrar Venta - Barbero</title></Head>
-
-            {/* Notificación Flotante */}
-            {notification.show && (
-                <div style={{
-                    position: 'fixed',
-                    top: '20px',
-                    right: '20px',
-                    backgroundColor: '#28a745',
-                    color: 'white',
-                    padding: '15px 25px',
-                    borderRadius: '8px',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-                    zIndex: 3000,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px'
-                }}>
-                    <FaCheckCircle size={24} />
-                    <div>
-                        <h4 style={{margin: 0, fontWeight: 'bold'}}>¡Éxito!</h4>
-                        <p style={{margin: 0, fontSize: '0.9em'}}>{notification.message}</p>
-                    </div>
-                </div>
-            )}
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '20px' }}>
-                <button onClick={() => router.push('/barbero/dashboard')} style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', fontSize: '1.5em' }}>
-                    <FaArrowLeft />
-                </button>
-                <h1 style={{ margin: 0, color: 'white' }}>Punto de Venta</h1>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '30px', alignItems: 'start' }}>
+            <main style={{maxWidth:'1000px', margin:'0 auto'}}>
                 
-                {/* COLUMNA 1: CATÁLOGO */}
-                <div>
-                    <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#2A2A2A', borderRadius: '8px', display: 'flex', gap: '10px', alignItems: 'center', border: '1px solid #444' }}>
-                        <FaSearch style={{color: '#888'}} />
-                        <input 
-                            type="text" 
-                            placeholder="Buscar productos..." 
-                            value={searchTerm}
-                            onChange={e => setSearchTerm(e.target.value)}
-                            style={{ background: 'transparent', border: 'none', color: 'white', width: '100%', outline: 'none', fontSize: '1em' }}
-                        />
+                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:30}}>
+                    <div style={{display:'flex', alignItems:'center', gap:10}}>
+                        <FaShoppingBag size={28} color="#0D6EFD"/>
+                        <h1 style={{margin:0, color:'white'}}>Tienda (Venta Productos)</h1>
                     </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '20px' }}>
-                        {loading ? <p style={{color: '#aaa'}}>Cargando inventario...</p> : 
-                            filteredProductos.map(p => (
-                                <SaleProductCard key={p.id_prod} producto={p} onAddToCart={addToCart} />
-                            ))
-                        }
-                    </div>
+                    <button 
+                        onClick={() => router.push('/barbero/dashboard')} 
+                        style={{
+                            background: '#333', color: 'white', border: '1px solid #555', 
+                            padding: '10px 15px', borderRadius: '8px', cursor: 'pointer', 
+                            display: 'flex', alignItems: 'center', gap: 8, fontWeight:'bold'
+                        }}
+                    >
+                        <FaHome /> Volver al Dashboard
+                    </button>
                 </div>
 
-                {/* COLUMNA 2: CARRITO */}
-                <div style={{ backgroundColor: '#1a1a1a', borderRadius: '12px', padding: '20px', border: '1px solid var(--color-accent)', position: 'sticky', top: '20px' }}>
-                    <h2 style={{ color: 'var(--color-accent)', borderBottom: '1px solid #333', paddingBottom: '10px', marginTop: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <FaShoppingCart /> Carrito
-                    </h2>
+                {/* MENSAJE DE DEPURACIÓN EN PANTALLA SI ALGO FALLA */}
+                {debugData && (
+                    <div style={{background:'rgba(255,193,7,0.2)', color:'#ffc107', padding:15, borderRadius:8, marginBottom:20, border:'1px solid #ffc107', display:'flex', alignItems:'center', gap:10}}>
+                        <FaExclamationTriangle /> 
+                        <span><b>DEBUG:</b> {debugData} (Revisa la consola F12 para ver los datos crudos)</span>
+                    </div>
+                )}
+                
+                <div style={{display:'grid', gridTemplateColumns:'2fr 1fr', gap:30}}>
+                    
+                    {/* LISTA DE PRODUCTOS */}
+                    <div>
+                        {loading ? (
+                            <p style={{color:'white'}}>Cargando inventario...</p>
+                        ) : productos.length === 0 ? (
+                            <div style={{textAlign:'center', padding:40, background:'#222', borderRadius:10, color:'#aaa'}}>
+                                <FaBoxOpen size={40} style={{marginBottom:10}}/>
+                                <p>No hay productos disponibles para venta.</p>
+                                <small>Verifica que tengan stock mayor a 0 en el panel de Admin.</small>
+                            </div>
+                        ) : (
+                            <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(160px, 1fr))', gap:15}}>
+                                {productos.map(p => {
+                                    // Normalizamos valores para mostrar
+                                    const stockDisplay = p.stock_bodega || p.stock || 0;
+                                    const precioDisplay = p.costo || p.precio || 0;
 
-                    {cart.length === 0 ? (
-                        <p style={{ color: '#666', fontStyle: 'italic', textAlign: 'center', padding: '20px 0' }}>
-                            Carrito vacío. Agrega productos.
-                        </p>
-                    ) : (
-                        <ul style={{ listStyle: 'none', padding: 0, maxHeight: '400px', overflowY: 'auto' }}>
-                            {cart.map(item => (
-                                <li key={item.id_prod} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #333' }}>
-                                    <div>
-                                        <div style={{ color: 'white', fontWeight: 'bold' }}>{item.nombre}</div>
-                                        <div style={{ color: '#aaa', fontSize: '0.9em' }}>${item.precio} x {item.cantidadCarrito}</div>
-                                    </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                        <span style={{ color: '#4caf50', fontWeight: 'bold' }}>${(item.precio * item.cantidadCarrito).toFixed(2)}</span>
-                                        <button onClick={() => removeFromCart(item.id_prod)} style={{ background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer' }}>
-                                            <FaTrash />
-                                        </button>
-                                    </div>
-                                </li>
-                            ))}
-                        </ul>
-                    )}
+                                    return (
+                                        <div key={p.id_insumo} style={{background:'#222', padding:15, borderRadius:10, textAlign:'center', border:'1px solid #333'}}>
+                                            <h4 style={{color:'white', margin:'10px 0', minHeight:'40px'}}>{p.nom_insumo}</h4>
+                                            <div style={{color:'var(--color-accent)', fontWeight:'bold', fontSize:'1.1rem'}}>${precioDisplay}</div>
+                                            <div style={{color:'#888', fontSize:'0.8rem', margin:'5px 0'}}>Stock: {stockDisplay}</div>
+                                            <button 
+                                                onClick={()=>agregar(p)} 
+                                                style={{marginTop:10, width:'100%', background:'#0D6EFD', border:'none', color:'white', padding:'8px', cursor:'pointer', borderRadius:6, fontWeight:'bold'}}
+                                            >
+                                                + Agregar
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
 
-                    <div style={{ marginTop: '20px', paddingTop: '15px', borderTop: '1px solid #444' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', fontSize: '1.2em', fontWeight: 'bold', color: 'white' }}>
-                            <span>Total:</span>
-                            <span style={{ color: '#4caf50' }}>${totalVenta.toFixed(2)}</span>
-                        </div>
+                    {/* CARRITO */}
+                    <div style={{background:'#1a1a1a', padding:20, borderRadius:12, height:'fit-content', border:'1px solid #444', position:'sticky', top:20}}>
+                        <h3 style={{color:'white', marginTop:0, borderBottom:'1px solid #333', paddingBottom:10}}>Carrito de Venta</h3>
                         
+                        {carrito.length === 0 ? (
+                            <p style={{color:'#666', fontStyle:'italic'}}>Carrito vacío</p>
+                        ) : (
+                            carrito.map((c, i) => {
+                                const precio = c.costo || c.precio || 0;
+                                return (
+                                    <div key={i} style={{display:'flex', justifyContent:'space-between', alignItems:'center', color:'#ccc', borderBottom:'1px solid #333', padding:'10px 0'}}>
+                                        <div>
+                                            <div style={{color:'white', fontWeight:'bold'}}>{c.nom_insumo}</div>
+                                            <small>Cant: {c.cantidad} x ${precio}</small>
+                                        </div>
+                                        <FaTrash color="#dc3545" style={{cursor:'pointer'}} onClick={()=>setCarrito(carrito.filter((_,idx)=>idx!==i))}/>
+                                    </div>
+                                );
+                            })
+                        )}
+
+                        <div style={{marginTop:20, fontSize:'1.2rem', color:'white', textAlign:'right', fontWeight:'bold'}}>
+                            Total: ${carrito.reduce((acc, item) => acc + ((item.costo||item.precio||0) * item.cantidad), 0)}
+                        </div>
+
                         <button 
-                            onClick={handleCobrar}
-                            disabled={cart.length === 0 || processing}
+                            onClick={procesarVenta} 
+                            disabled={carrito.length===0} 
                             style={{
-                                width: '100%',
-                                padding: '15px',
-                                backgroundColor: 'var(--color-accent)',
-                                color: '#1C1C1C',
-                                border: 'none',
-                                borderRadius: '8px',
-                                fontWeight: 'bold',
-                                fontSize: '1.1em',
-                                cursor: cart.length === 0 ? 'not-allowed' : 'pointer',
-                                opacity: cart.length === 0 ? 0.5 : 1
+                                width:'100%', marginTop:20, padding:12, 
+                                background: carrito.length===0 ? '#555' : '#28a745', 
+                                border:'none', color:'white', cursor: carrito.length===0 ? 'not-allowed' : 'pointer', 
+                                borderRadius:8, fontWeight:'bold', fontSize:'1rem'
                             }}
                         >
-                            {processing ? 'Procesando...' : 'Cobrar Venta'}
+                            Confirmar Venta
                         </button>
                     </div>
                 </div>
-            </div>
+            </main>
         </>
     );
-};
-
-export default VentasPage;
+}

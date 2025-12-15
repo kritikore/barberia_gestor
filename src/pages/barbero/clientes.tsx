@@ -1,131 +1,90 @@
-// src/pages/barbero/clientes.tsx
 import React, { useState, useEffect } from 'react';
 import { NextPage } from 'next';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { FaUsers, FaSearch, FaArrowLeft } from 'react-icons/fa';
-import BarberLayout from '@/components/BarberLayout'; // Layout del Barbero
-import ClientCard, { Cliente } from '@/components/ClientCard';
+import { FaUsers, FaPlus, FaPhone, FaArrowLeft } from 'react-icons/fa';
+import AdminLayout from '@/components/AdminLayout'; 
+import ClientModal from '@/components/ClientModal';
+import ClientDetailModal from '@/components/ClientDetailModal';
+import { useBarbero } from '@/hooks/useBarbero'; // 👈 Hook
+import styles from '@/styles/Servicios.module.css';
 
-const ConsultarClientesBarbero: NextPage = () => {
+const ClientesBarberoPage: NextPage = () => {
     const router = useRouter();
+    const { barbero, loading: sessionLoading } = useBarbero();
     
-    // Estados
-    const [clientes, setClientes] = useState<Cliente[]>([]);
-    const [filteredClientes, setFilteredClientes] = useState<Cliente[]>([]);
-    const [searchTerm, setSearchTerm] = useState('');
+    const [clientes, setClientes] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
 
-    // Cargar clientes desde la API
-    useEffect(() => {
-        const fetchClientes = async () => {
-            try {
-                const response = await fetch('/api/clientes');
-                if (!response.ok) throw new Error('Error al cargar');
-                const data = await response.json();
-                setClientes(data);
-                setFilteredClientes(data);
-            } catch (error) {
-                console.error(error);
-            } finally {
-                setLoading(false);
+    const fetchMisClientes = async () => {
+        if (!barbero) return;
+        setLoading(true);
+        try {
+            const res = await fetch('/api/clientes');
+            if (res.ok) {
+                const data = await res.json();
+                // 🔍 FILTRO REAL: Solo clientes asignados a MI ID
+                const misClientes = data.filter((c: any) => c.id_bar === barbero.id_bar);
+                setClientes(misClientes);
             }
-        };
-        fetchClientes();
-    }, []);
+        } catch (error) { console.error(error); } finally { setLoading(false); }
+    };
 
-    // Lógica de búsqueda
-    useEffect(() => {
-        const term = searchTerm.toLowerCase();
-        const filtered = clientes.filter(c => 
-            c.nom_clie.toLowerCase().includes(term) || 
-            c.apell_clie.toLowerCase().includes(term) ||
-            c.tel_clie.includes(term)
-        );
-        setFilteredClientes(filtered);
-    }, [searchTerm, clientes]);
+    useEffect(() => { if (barbero) fetchMisClientes(); }, [barbero]);
+
+    if (sessionLoading || !barbero) return <div style={{color:'white', padding:50}}>Cargando...</div>;
 
     return (
         <>
-            <Head><title>Consultar Clientes - Barbero</title></Head>
+            <Head><title>Mi Directorio</title></Head>
 
-            <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-                
-                {/* Encabezado con Botón de Volver */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '30px' }}>
-                    <button onClick={() => router.push('/barbero/dashboard')} style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', fontSize: '1.2em' }}>
-                        <FaArrowLeft />
+            {isAddModalOpen && (
+                <ClientModal 
+                    onClose={() => setIsAddModalOpen(false)} 
+                    onSuccess={fetchMisClientes}
+                    fixedBarberId={barbero.id_bar} // 👈 Auto-asignación
+                />
+            )}
+
+            {selectedClientId && (
+                <ClientDetailModal 
+                    clientId={selectedClientId}
+                    onClose={() => setSelectedClientId(null)}
+                    onUpdateSuccess={fetchMisClientes}
+                />
+            )}
+
+            <main>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
+                    <div style={{display:'flex', alignItems:'center', gap: 15}}>
+                        <button onClick={() => router.back()} style={{background:'none', border:'none', color:'#aaa', cursor:'pointer', fontSize:'1.2rem'}}><FaArrowLeft /></button>
+                        <h1 style={{margin:0}}><FaUsers style={{marginRight:10, color:'var(--color-accent)'}}/> Mi Directorio</h1>
+                    </div>
+                    <button onClick={() => setIsAddModalOpen(true)} style={{backgroundColor:'var(--color-accent)', color:'black', border:'none', padding:'10px 20px', borderRadius:'8px', cursor:'pointer', fontWeight:'bold', display:'flex', alignItems:'center', gap:'8px'}}>
+                       <FaPlus /> Nuevo Cliente
                     </button>
-                    <h1 style={{ margin: 0, fontSize: '2em', display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--color-text)' }}>
-                        <FaUsers style={{ color: 'var(--color-accent)' }} /> 
-                        Cartera de Clientes
-                    </h1>
                 </div>
 
-                {/* Barra de Estadísticas (Simulando el diseño de la imagen) */}
-                <div style={{ 
-                    display: 'grid', 
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
-                    gap: '15px', 
-                    marginBottom: '30px' 
-                }}>
-                    <div style={{ backgroundColor: 'var(--color-card)', padding: '15px', borderRadius: '8px', border: '1px solid #444', textAlign: 'center' }}>
-                        <h3 style={{ margin: 0, fontSize: '2em', color: 'var(--color-text)' }}>{clientes.length}</h3>
-                        <p style={{ margin: 0, fontSize: '0.9em', color: '#aaa' }}>Total Clientes</p>
-                    </div>
-                    <div style={{ backgroundColor: 'var(--color-card)', padding: '15px', borderRadius: '8px', border: '1px solid #444', textAlign: 'center' }}>
-                        <h3 style={{ margin: 0, fontSize: '2em', color: 'var(--color-primary)' }}>{clientes.length}</h3>
-                        <p style={{ margin: 0, fontSize: '0.9em', color: '#aaa' }}>Activos</p>
-                    </div>
+                <div className={styles.tableContainer}>
+                    <table className={styles.serviciosTable}>
+                        <thead>
+                            <tr><th>Nombre</th><th>Teléfono</th><th>Ocupación</th></tr>
+                        </thead>
+                        <tbody>
+                            {clientes.map((cli) => (
+                                <tr key={cli.id_clie} onClick={() => setSelectedClientId(cli.id_clie)} style={{cursor:'pointer'}}>
+                                    <td style={{fontWeight:'bold', color:'white'}}>{cli.nom_clie} {cli.apell_clie}</td>
+                                    <td style={{color:'#ccc'}}><FaPhone size={12} style={{marginRight:5}}/>{cli.tel_clie}</td>
+                                    <td style={{color:'#aaa'}}>{cli.ocupacion || '-'}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
-
-                {/* Barra de Búsqueda */}
-                <div style={{ 
-                    marginBottom: '30px', 
-                    backgroundColor: 'var(--color-card)', 
-                    padding: '15px 20px', 
-                    borderRadius: '50px', // Redondeado como en la imagen
-                    border: '1px solid #444',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '15px'
-                }}>
-                    <FaSearch style={{ color: '#888', fontSize: '1.2em' }} />
-                    <input 
-                        type="text" 
-                        placeholder="Buscar por nombre, apellido o teléfono..." 
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        style={{
-                            background: 'transparent',
-                            border: 'none',
-                            color: 'white',
-                            width: '100%',
-                            fontSize: '1.1em',
-                            outline: 'none'
-                        }}
-                    />
-                </div>
-
-                {/* Cuadrícula de Clientes */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
-                    {loading ? (
-                        <p style={{ textAlign: 'center', color: '#888', gridColumn: '1 / -1' }}>Cargando clientes...</p>
-                    ) : (
-                        filteredClientes.map(cliente => (
-                            <ClientCard key={cliente.id_clie} cliente={cliente} />
-                        ))
-                    )}
-                    
-                    {!loading && filteredClientes.length === 0 && (
-                        <p style={{ textAlign: 'center', color: '#888', gridColumn: '1 / -1', padding: '40px' }}>
-                            No se encontraron clientes que coincidan con la búsqueda.
-                        </p>
-                    )}
-                </div>
-            </div>
+            </main>
         </>
     );
 };
-
-export default ConsultarClientesBarbero;
+export default ClientesBarberoPage;

@@ -1,69 +1,107 @@
-// src/pages/api/clientes/index.ts
-
 import { NextApiRequest, NextApiResponse } from 'next';
 import { db } from '@/lib/db';
+import multiparty from 'multiparty';
+import fs from 'fs';
+
+export const config = {
+    api: { bodyParser: false },
+};
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     
-    // --- MÉTODO POST: CREAR NUEVO CLIENTE ---
-    if (req.method === 'POST') {
-        const { nom_clie, apell_clie, tel_clie, edad_clie, ocupacion } = req.body;
-
-        if (!nom_clie || !apell_clie || !tel_clie || !edad_clie || !ocupacion) {
-            return res.status(400).json({ message: 'Todos los campos son obligatorios.' });
-        }
-
+    // ✅ 1. MÉTODO GET: Listar Clientes (Esto es lo que faltaba)
+    if (req.method === 'GET') {
         try {
-            // Asumimos un barbero por defecto o sacado de la sesión si implementas auth completo
-            const id_bar_default = 1; 
-
+            // Traemos todos los clientes. 
+            // El filtrado por barbero lo haces en el frontend (como vi en tu error)
             const query = `
-                INSERT INTO cliente (nom_clie, apell_clie, tel_clie, edad_clie, ocupacion, id_bar)
-                VALUES ($1, $2, $3, $4, $5, $6)
-                RETURNING *; 
-            `;
-            
-            // IMPORTANTE: parseInt para la edad
-            const values = [nom_clie, apell_clie, tel_clie, parseInt(edad_clie, 10), ocupacion, id_bar_default];
-            
-            const result = await db.query(query, values);
-
-            return res.status(201).json(result.rows[0]);
-
-        } catch (error: any) {
-            console.error("Error en API al crear cliente:", error);
-            // Manejo de errores de base de datos (ej. Constraints)
-            if (error.code === '23514') {
-                 return res.status(400).json({ message: 'Error: Datos inválidos. Verifica que el nombre/apellido no tengan caracteres especiales no permitidos.' });
-            }
-            return res.status(500).json({ message: 'Error interno del servidor', error: error.message });
-        }
-    }
-
-    // --- MÉTODO GET: LISTAR CLIENTES ---
-   if (req.method === 'GET') {
-        try {
-            // 🔑 CORRECCIÓN: Hacemos un LEFT JOIN para contar las visitas (servicios realizados)
-            const query = `
-                SELECT 
-                    c.*, 
-                    COUNT(sr.ID_DESE) as "total_visitas"
+                SELECT c.*, b.nom_bar, b.apell_bar
                 FROM cliente c
-                LEFT JOIN SERVICIO_REALIZADO sr ON c.id_clie = sr.ID_CLIE
-                GROUP BY c.id_clie
-                ORDER BY c.id_clie DESC;
+                LEFT JOIN barber b ON c.id_bar = b.id_bar
+                ORDER BY c.id_clie DESC
             `;
             const result = await db.query(query);
             
-            // Convertimos total_visitas a número
-            const clientes = result.rows.map(cli => ({
-                ...cli,
-                total_visitas: parseInt(cli.total_visitas, 10) || 0
-            }));
+            console.log("🔍 DATOS QUE SALEN DE LA BD:", JSON.stringify(result.rows, null, 2));
+            // Devolvemos un ARRAY. Ahora data.filter() sí funcionará.
+            return res.status(200).json(result.rows);
 
-            return res.status(200).json(clientes);
         } catch (error: any) {
-            console.error("Error en API al listar clientes:", error);
-            return res.status(500).json({ message: 'Error interno del servidor', error: error.message });
+            console.error("Error al listar clientes:", error);
+            return res.status(500).json({ message: 'Error al obtener clientes' });
         }
-    }}
+    }
+
+    // ✅ 2. MÉTODO POST: Crear Cliente (Lo que ya tenías funcionando)
+    if (req.method === 'POST') {
+        
+        await new Promise<void>((resolve, reject) => {
+            const form = new multiparty.Form();
+
+            form.parse(req, async (err, fields, files) => {
+                if (err) {
+                    console.error("❌ Error al leer formulario:", err);
+                    res.status(500).json({ message: 'Error leyendo datos' });
+                    return resolve();
+                }
+
+                try {
+                    // Limpieza de datos
+                    const nom_clie = fields.nom_clie?.[0]?.trim();
+                    const apell_clie = fields.apell_clie?.[0]?.trim();
+                    const tel_clie = fields.tel_clie?.[0]?.trim();
+                    const email_clie = fields.email_clie?.[0]?.trim() || '';
+                    const ocupacion = fields.ocupacion?.[0]?.trim() || 'No especificada';
+                    const edad_clie = fields.edad_clie?.[0] ? parseInt(fields.edad_clie[0]) : 0;
+                    
+                    let id_bar = null;
+                    if (fields.id_bar && fields.id_bar[0] && fields.id_bar[0] !== '0' && fields.id_bar[0] !== '') {
+                        id_bar = parseInt(fields.id_bar[0]);
+                    }
+
+                    if (!nom_clie || !apell_clie || !tel_clie) {
+                        res.status(400).json({ message: 'Faltan datos obligatorios' });
+                        return resolve();
+                    }
+
+                    // Foto
+                    let fotoBuffer = null;
+                    if (files.foto && files.foto.length > 0) {
+                        const filePath = files.foto[0].path;
+                        fotoBuffer = fs.readFileSync(filePath);
+                        fs.unlinkSync(filePath); 
+                    }
+
+                    // Query Insertar
+                    const query = `
+                        INSERT INTO cliente (
+                            nom_clie, apell_clie, tel_clie, email_clie, 
+                            ocupacion, edad_clie, id_bar, foto
+                        )
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                        RETURNING id_clie;
+                    `;
+
+                    const values = [nom_clie, apell_clie, tel_clie, email_clie, ocupacion, edad_clie, id_bar, fotoBuffer];
+
+                    await db.query(query, values);
+                    
+                    res.status(201).json({ message: 'Cliente creado exitosamente' });
+                    return resolve();
+
+                } catch (error: any) {
+                    console.error("❌ ERROR BD:", error);
+                    res.status(500).json({ message: 'Error de Base de Datos', detail: error.message });
+                    return resolve();
+                }
+
+            });
+        });
+
+
+        
+    } else {
+        // Cualquier otro método que no sea GET ni POST
+        res.status(405).json({ message: 'Método no permitido' });
+    }
+}

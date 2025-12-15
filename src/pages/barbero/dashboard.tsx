@@ -1,132 +1,113 @@
-// src/pages/barbero/dashboard.tsx
+import React, { useState } from 'react';
 import { NextPage } from 'next';
 import Head from 'next/head';
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
-import { FaUserPlus, FaUsers, FaCalendarAlt, FaFlask, FaBolt, FaClock ,FaShoppingCart} from 'react-icons/fa'; 
-import BarberLayout from '@/components/BarberLayout'; 
+import { 
+    FaUserPlus, FaAddressBook, FaCalendarAlt, FaCalendarPlus, 
+    FaMoneyBillWave, FaShoppingBag, FaBoxOpen 
+} from 'react-icons/fa';
+import AdminLayout from '@/components/AdminLayout'; 
+import ClientModal from '@/components/ClientModal';
+import { useBarbero } from '@/hooks/useBarbero'; // 👈 Hook de identidad real
 
 const BarberDashboard: NextPage = () => {
-    const [userName, setUserName] = useState("Barbero");
+    const { barbero, loading } = useBarbero();
+    const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
 
-    useEffect(() => {
-        const storedUser = localStorage.getItem('userProfile');
-        if (storedUser) {
-            try {
-                const user = JSON.parse(storedUser);
-                setUserName(user.nombre || "Barbero");
-            } catch (error) { console.error(error); }
-        }
-    }, []);
-
-    // Estilos en línea para asegurar que se vea bien sin depender del CSS Module externo
-    const cardStyle = {
-        display: 'flex',
-        flexDirection: 'column' as 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '25px',
-        borderRadius: '12px',
-        textDecoration: 'none',
-        transition: 'transform 0.2s, box-shadow 0.2s',
-        color: 'white',
-        border: '1px solid rgba(255,255,255,0.1)',
-        boxShadow: '0 4px 6px rgba(0,0,0,0.3)',
-        textAlign: 'center' as 'center',
-        cursor: 'pointer'
-    };
+    if (loading) return <div style={{color:'white', padding:50}}>Cargando panel...</div>;
+    if (!barbero) return null;
 
     return (
         <>
             <Head><title>Panel de Barbero</title></Head>
-            
-            <header style={{marginBottom: '30px', borderBottom: '1px solid #333', paddingBottom: '20px'}}>
-                <h1 style={{color: 'var(--color-accent)', margin: 0}}>Hola, {userName} 👋</h1>
-                <p style={{color: '#aaa', margin: '5px 0'}}>¿Qué vamos a hacer ahora?</p>
-            </header>
 
-            {/* GRID PRINCIPAL */}
-            <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', // Responsivo
-                gap: '20px',
-                maxWidth: '1000px',
-                margin: '0 auto'
-            }}>
-                
-                {/* 1. CAJA RÁPIDA (Destacado - Estilo "Urbano Premium") */}
-                <Link href="/barbero/caja-rapida" style={{
-                    ...cardStyle,
-                    gridColumn: '1 / -1', // Ocupa todo el ancho
-                    background: 'linear-gradient(135deg, rgba(212, 175, 55, 0.2) 0%, rgba(28, 28, 28, 1) 100%)', // Dorado oscuro
-                    border: '2px solid var(--color-accent)',
-                    flexDirection: 'row', // Icono al lado del texto
-                    gap: '20px',
-                    padding: '30px'
-                }}>
-                    <div style={{background: 'var(--color-accent)', padding: '15px', borderRadius: '50%', color: 'black'}}>
-                        <FaBolt size={30} />
+            {/* MODAL: Nuevo Cliente (Se guarda directo en la cartera de ESTE barbero) */}
+            {isQuickAddOpen && (
+                <ClientModal 
+                    onClose={() => setIsQuickAddOpen(false)} 
+                    onSuccess={() => alert("✅ Cliente guardado en tu cartera personal")} 
+                    fixedBarberId={barbero.id_bar} // 👈 ID REAL
+                />
+            )}
+
+            <div style={{padding: '10px'}}>
+                <header style={{marginBottom: '30px'}}>
+                    <h1 style={{color: 'white', margin: '0 0 5px 0'}}>Hola, {barbero.nom_bar} 👋</h1>
+                    <p style={{color: '#aaa', margin: 0}}>ID Empleado: {barbero.id_bar}</p>
+                </header>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>
+
+                    {/* 1. NUEVO CLIENTE */}
+                    <div onClick={() => setIsQuickAddOpen(true)} style={cardStyle}>
+                        <div style={iconContainerStyle('#28a745')}><FaUserPlus size={30} color="white" /></div>
+                        <h3 style={titleStyle}>Nuevo Cliente</h3>
+                        <span style={descStyle}>Registrar en mi cartera</span>
                     </div>
-                    <div style={{textAlign: 'left'}}>
-                        <h2 style={{margin: 0, color: 'var(--color-accent)', textTransform: 'uppercase', fontSize: '1.5em'}}>Caja Rápida</h2>
-                        <p style={{margin: 0, color: '#ddd'}}>Cobrar corte al instante (Walk-in)</p>
-                    </div>
-                </Link>
 
-                {/* 2. AGENDAR CITA (Nuevo Acceso Directo) */}
-                <Link href="/barbero/agendar" style={{
-                    ...cardStyle,
-                    gridColumn: 'span 2', // Ocupa 2 espacios si cabe
-                    background: 'linear-gradient(135deg, rgba(13, 110, 253, 0.2) 0%, rgba(28, 28, 28, 1) 100%)', // Azul oscuro
-                    border: '1px solid #0D6EFD'
-                }}>
-                    <FaClock size={25} color="#0D6EFD" style={{marginBottom: 10}}/>
-                    <h3 style={{margin: 0}}>Agendar Cita</h3>
-                    <span style={{fontSize: '0.8em', color: '#aaa'}}>Reservar espacio futuro</span>
-                </Link>
+                    {/* 2. MI DIRECTORIO */}
+                    <Link href="/barbero/clientes" style={{textDecoration:'none'}}>
+                        <div style={cardStyle}>
+                            <div style={iconContainerStyle('#17a2b8')}><FaAddressBook size={30} color="white" /></div>
+                            <h3 style={titleStyle}>Mi Directorio</h3>
+                            <span style={descStyle}>Ver mis clientes</span>
+                        </div>
+                    </Link>
 
-                {/* 3. VER AGENDA (Consultar) */}
-                <Link href="/barbero/citas" style={{...cardStyle, background: '#2A2A2A'}}>
-                    <FaCalendarAlt size={25} color="#F5C542" style={{marginBottom: 10}}/> 
-                    <h3 style={{margin: 0, fontSize: '1em'}}>Ver Agenda</h3>
-                </Link>
+                    {/* 3. MIS CITAS */}
+                    <Link href="/barbero/citas" style={{textDecoration:'none'}}>
+                        <div style={cardStyle}>
+                            <div style={iconContainerStyle('#ffc107')}><FaCalendarAlt size={30} color="black" /></div>
+                            <h3 style={titleStyle}>Mis Citas</h3>
+                            <span style={descStyle}>Agenda del día</span>
+                        </div>
+                    </Link>
 
-                {/* 4. REGISTRAR CLIENTE */}
-                <Link href="/barbero/registrar-cliente" style={{...cardStyle, background: '#2A2A2A'}}>
-                    <FaUserPlus size={25} color="#28a745" style={{marginBottom: 10}}/> 
-                    <h3 style={{margin: 0, fontSize: '1em'}}>Nuevo Cliente</h3>
-                </Link>
+                    {/* 4. AGENDAR CITA */}
+                    <Link href="/barbero/agendar" style={{textDecoration:'none'}}>
+                        <div style={cardStyle}>
+                            <div style={iconContainerStyle('#fd7e14')}><FaCalendarPlus size={30} color="white" /></div>
+                            <h3 style={titleStyle}>Agendar Cita</h3>
+                            <span style={descStyle}>Reservar espacio</span>
+                        </div>
+                    </Link>
 
-                {/* 5. CONSULTAR CLIENTES */}
-                <Link href="/barbero/clientes" style={{...cardStyle, background: '#2A2A2A'}}>
-                    <FaUsers size={25} color="#17a2b8" style={{marginBottom: 10}}/> 
-                    <h3 style={{margin: 0, fontSize: '1em'}}>Directorio</h3>
-                </Link>
+                    {/* 5. CAJA RÁPIDA */}
+                    <Link href="/barbero/caja-rapida" style={{textDecoration:'none'}}>
+                        <div style={cardStyle}>
+                            <div style={iconContainerStyle('#D4AF37')}><FaMoneyBillWave size={30} color="black" /></div>
+                            <h3 style={titleStyle}>Caja Rápida</h3>
+                            <span style={descStyle}>Cobrar servicios</span>
+                        </div>
+                    </Link>
 
-                {/* 6. INSUMOS */}
-                <Link href="/barbero/insumos" style={{...cardStyle, background: '#2A2A2A'}}>
-                    <FaFlask size={25} color="#dc3545" style={{marginBottom: 10}}/> 
-                    <h3 style={{margin: 0, fontSize: '1em'}}>Mis Insumos</h3>
-                </Link>
+                    {/* 6. TIENDA (Ventas) */}
+                    <Link href="/barbero/ventas" style={{textDecoration:'none'}}>
+                        <div style={cardStyle}>
+                            <div style={iconContainerStyle('#0D6EFD')}><FaShoppingBag size={30} color="white" /></div>
+                            <h3 style={titleStyle}>Tienda</h3>
+                            <span style={descStyle}>Vender productos</span>
+                        </div>
+                    </Link>
 
-              <Link
-    href="/barbero/ventas"
-    style={{ ...cardStyle, background: '#2A2A2A' }}
->
-    <FaShoppingCart
-        size={25}
-        color="#6f42c1"
-        style={{ marginBottom: 10 }}
-    />
-    <h3 style={{ margin: 0, fontSize: '1em' }}>
-        Vender Productos
-    </h3>
-</Link>
+                    {/* 7. INSUMOS (Re-stock) */}
+                    <Link href="/barbero/insumos" style={{textDecoration:'none'}}>
+                        <div style={cardStyle}>
+                            <div style={iconContainerStyle('#6c757d')}><FaBoxOpen size={30} color="white" /></div>
+                            <h3 style={titleStyle}>Insumos</h3>
+                            <span style={descStyle}>Revisar y reponer stock</span>
+                        </div>
+                    </Link>
 
-
+                </div>
             </div>
         </>
     );
 };
+
+const cardStyle: React.CSSProperties = { backgroundColor: '#2A2A2A', borderRadius: '16px', padding: '25px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', border: '1px solid #444', cursor: 'pointer', height: '100%', justifyContent: 'center', gap: '15px' };
+const iconContainerStyle = (color: string): React.CSSProperties => ({ backgroundColor: color, width: '60px', height: '60px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' });
+const titleStyle: React.CSSProperties = { margin: 0, color: 'white', fontSize: '1.2rem' };
+const descStyle: React.CSSProperties = { color: '#888', fontSize: '0.9rem' };
 
 export default BarberDashboard;

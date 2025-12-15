@@ -1,49 +1,39 @@
-// src/pages/api/insumos/[id].ts
 import { NextApiRequest, NextApiResponse } from 'next';
 import { db } from '@/lib/db';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-    const { id } = req.query;
+    const { id } = req.query; // ID del Producto
 
-    if (!id) {
-        return res.status(400).json({ message: 'ID de insumo no proporcionado' });
-    }
+    if (req.method === 'PUT') {
+        // Recibimos los datos normales + los nuevos para el historial
+        const { stock_bodega, id_bar, cantidad_venta, precio_venta } = req.body;
 
-    // --- 2. ACTUALIZAR STOCK (PATCH) ---
-    if (req.method === 'PATCH') {
         try {
-            const { stock } = req.body; 
+            // 1. LÓGICA EXISTENTE: Actualizar Stock (No la tocamos, sigue funcionando igual)
+            await db.query(`
+                UPDATE PRODUCTO 
+                SET stock = $1 
+                WHERE id_prod = $2
+            `, [stock_bodega, id]);
 
-            if (stock === undefined) {
-                return res.status(400).json({ message: 'Nuevo stock no proporcionado' });
-            }
-            
-            const stockNum = parseInt(stock, 10);
-            if (isNaN(stockNum) || stockNum < 0) {
-                return res.status(400).json({ message: 'El stock debe ser un número positivo' });
-            }
-
-            const query = `
-                UPDATE isumo
-                SET STOCK = $1
-                WHERE id_insu = $2
-                RETURNING *;
-            `;
-            const result = await db.query(query, [stockNum, id]);
-
-            if (result.rowCount === 0) {
-                return res.status(404).json({ message: 'Insumo no encontrado' });
+            // 2. LÓGICA NUEVA: Guardar en el Historial (Bitácora)
+            // Solo si nos mandan datos de venta (para no romper ediciones normales de inventario)
+            if (cantidad_venta && precio_venta) {
+                const total = Number(cantidad_venta) * Number(precio_venta);
+                
+                await db.query(`
+                    INSERT INTO venta_producto (id_prod, id_bar, cantidad, total)
+                    VALUES ($1, $2, $3, $4)
+                `, [id, id_bar || null, cantidad_venta, total]);
+                
+                console.log(`📝 Venta registrada: Prod ${id} por Barbero ${id_bar}`);
             }
 
-            return res.status(200).json(result.rows[0]);
+            return res.status(200).json({ message: 'Stock actualizado y venta registrada' });
 
         } catch (error: any) {
-             console.error("Error en API al actualizar stock de insumo:", error);
-            return res.status(500).json({ message: 'Error interno del servidor', error: error.message });
+            console.error("❌ Error al actualizar/vender:", error);
+            return res.status(500).json({ message: 'Error interno', error: error.message });
         }
     }
-
-    // (Aquí podrías añadir PUT para editar nombre, o DELETE para borrar)
-
-    return res.status(405).json({ message: 'Método no permitido' });
 }

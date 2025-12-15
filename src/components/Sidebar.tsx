@@ -31,7 +31,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onToggle, isExpanded, onLogout }) => 
         //{ name: 'Insumos', icon: <FaFlask />, path: '/insumos' },
         { name: 'Personal', icon: <FaUserTie />, path: '/personal' },
         { name: 'Servicios', icon: <FaCut />, path: '/servicios' },
-       // { name: 'Historial', icon: <FaScroll />, path: '/historial' },
+       { name: 'Historial', icon: <FaScroll />, path: '/historial' },
         { name: 'Configuración', icon: <FaCog />, path: '/configuracion' },
     ];
 
