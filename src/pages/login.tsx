@@ -51,6 +51,8 @@ const LoginPage: NextPage = () => {
         // 1. Guardamos en localStorage
         localStorage.setItem('usuario_activo', JSON.stringify(data.user));
 
+        localStorage.setItem('app_version', 'v1.0_produccion');
+
         // 2. Verificamos que se guardó correctamente antes de redirigir
         const guardado = localStorage.getItem('usuario_activo');
 

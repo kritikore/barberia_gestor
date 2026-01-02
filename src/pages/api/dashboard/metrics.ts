@@ -28,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 p.nom_prod as producto,
                 vp.cantidad,
                 vp.total,
-                b.nom_bar as vendedor
+                COALESCE(b.nom_bar, 'Caja') as vendedor
             FROM venta_producto vp
             JOIN PRODUCTO p ON vp.id_prod = p.id_prod
             LEFT JOIN barber b ON vp.id_bar = b.id_bar
@@ -43,22 +43,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         // Formatear lista para el Dashboard y PDF
         const ventasDetalle = ventasRes.rows.map((v: any) => ({
-            hora: new Date(v.fecha).toLocaleTimeString('es-ES', {hour: '2-digit', minute:'2-digit'}),
+            hora: new Date(v.fecha).toLocaleTimeString('es-MX', {hour: '2-digit', minute:'2-digit', hour12: false}),
             producto: v.producto,
             cantidad: v.cantidad,
             total: v.total,
-            vendedor: v.vendedor || 'Admin'
+            vendedor: v.vendedor
         }));
 
 
         // --- 3. OBTENER DETALLE DE SERVICIOS / CORTES (Para el PDF) ---
-        // Solo traemos las citas que ya están "Completada"
+        // Solo traemos las citas que ya están "Completada" para el reporte fiscal
         const queryServiciosDetalle = `
             SELECT 
                 c.fecha, 
                 c.hora, 
                 b.nom_bar, 
-                cl.nom_clie || ' ' || cl.apell_clie as cliente,
+                CONCAT(cl.nom_clie, ' ', cl.apell_clie) as cliente,
                 s.tipo as servicio,
                 s.precio
             FROM cita c
@@ -73,7 +73,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const serviciosDetalleRes = await db.query(queryServiciosDetalle);
 
         const serviciosDetalle = serviciosDetalleRes.rows.map((s: any) => ({
-            fecha: new Date(s.fecha).toLocaleDateString('es-ES'),
+            fecha: new Date(s.fecha).toLocaleDateString('es-MX'),
             hora: s.hora,
             barbero: s.nom_bar,
             cliente: s.cliente,
@@ -103,12 +103,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 GROUP BY b.nom_bar ORDER BY total DESC LIMIT 1
             `;
 
-            // LISTA DE PRÓXIMAS CITAS (Día - Muestra todas las de hoy)
+            // LISTA DE PRÓXIMAS CITAS (Día - Muestra todas las de hoy para el Timeline)
             listaCitasQuery = `
                 SELECT 
-                    c.hora, c.estado,
-                    cl.nom_clie || ' ' || cl.apell_clie as cliente, 
-                    s.tipo as servicio
+                    c.hora, 
+                    c.estado, -- 👈 Vital para el frontend
+                    CONCAT(cl.nom_clie, ' ', cl.apell_clie) as cliente, 
+                    s.tipo as servicio,
+                    s.precio
                 FROM cita c
                 JOIN cliente cl ON c.id_clie = cl.id_clie
                 JOIN servicio s ON c.id_serv = s.id_serv
@@ -138,14 +140,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             // LISTA DE PRÓXIMAS CITAS (Mes - Limitada a 5 futuras)
             listaCitasQuery = `
                 SELECT 
-                    c.hora, c.estado,
-                    cl.nom_clie || ' ' || cl.apell_clie as cliente, 
-                    s.tipo as servicio
+                    c.hora, 
+                    c.estado, -- 👈 Vital para el frontend
+                    CONCAT(cl.nom_clie, ' ', cl.apell_clie) as cliente, 
+                    s.tipo as servicio,
+                    s.precio
                 FROM cita c
                 JOIN cliente cl ON c.id_clie = cl.id_clie
                 JOIN servicio s ON c.id_serv = s.id_serv
                 WHERE c.fecha >= CURRENT_DATE 
-                ORDER BY c.fecha ASC, c.hora ASC LIMIT 5
+                ORDER BY c.fecha ASC, c.hora ASC LIMIT 6
             `;
         }
 
@@ -163,14 +167,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // --- 6. RESPUESTA JSON FINAL ---
         res.status(200).json({
             servicios: parseFloat(servRes.rows[0]?.total || 0),
-            productos: parseFloat(totalProductos.toString()), // Total calculado de venta_producto
+            productos: parseFloat(totalProductos.toString()), 
             
             ventasDetalle: ventasDetalle,       // <--- Lista para la tarjeta y PDF (Productos)
-            serviciosDetalle: serviciosDetalle, // <--- Lista para el PDF (Cortes)
+            serviciosDetalle: serviciosDetalle, // <--- Lista para el PDF (Cortes Completados)
             
             insumosBajos: parseInt(insumoRes.rows[0]?.alertas || 0),
             topBarber: topBarberRes.rows[0] ? topBarberRes.rows[0].nom_bar : "N/A",
-            proximasCitas: citasRes.rows
+            proximasCitas: citasRes.rows        // <--- Lista para el Timeline (Citas del día con estado)
         });
 
     } catch (error) {

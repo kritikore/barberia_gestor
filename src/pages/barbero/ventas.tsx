@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import AdminLayout from '@/components/AdminLayout';
+import Head from 'next/head';
 import { useBarbero } from '@/hooks/useBarbero';
 import { FaShoppingBag, FaTrash, FaHome, FaBoxOpen, FaExclamationTriangle } from 'react-icons/fa';
+import CheckoutModal from '@/components/CheckoutModal';
+import TicketModal from '@/components/TicketModal';
 
 export default function TiendaBarbero() {
     const router = useRouter();
@@ -11,33 +13,26 @@ export default function TiendaBarbero() {
     const [productos, setProductos] = useState<any[]>([]);
     const [carrito, setCarrito] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [debugData, setDebugData] = useState<string>(''); // Para ver errores en pantalla
+    const [debugData, setDebugData] = useState<string>('');
+
+    // Estados para Modales de Cobro
+    const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+    const [ticketData, setTicketData] = useState<any>(null);
     
-    // 1. Cargar Inventario GLOBAL
+    // 1. Cargar Inventario
     const cargarInventario = async () => {
         setLoading(true);
         try {
             const res = await fetch('/api/insumos');
             const data = await res.json();
             
-            console.log("📦 DATOS CRUDOS DE LA API:", data); // <--- MIRA ESTO EN F12
-
             if (Array.isArray(data)) {
-                // Filtro "Inteligente": Busca stock en varias posibles columnas y convierte a número
                 const disponibles = data.filter((p: any) => {
-                    // Intentamos leer el stock de varias formas por si el nombre cambió
                     const stockReal = Number(p.stock_bodega || p.stock || p.cantidad || 0);
-                    // Solo mostramos si hay stock positivo
                     return stockReal > 0;
                 });
-                
-                if (disponibles.length === 0 && data.length > 0) {
-                    setDebugData("Hay productos en BD pero todos tienen Stock 0 o el nombre de la columna stock_bodega está mal.");
-                }
-
                 setProductos(disponibles);
             } else {
-                console.error("La API no devolvió una lista:", data);
                 setProductos([]);
             }
         } catch (error: any) {
@@ -48,32 +43,62 @@ export default function TiendaBarbero() {
         }
     };
 
-    useEffect(() => { cargarInventario(); }, []);
+    useEffect(() => { if(barbero) cargarInventario(); }, [barbero]);
 
-    const procesarVenta = async () => {
+    // 2. Calcular Total del Carrito
+    const totalCarrito = carrito.reduce((acc, item) => acc + ((item.costo||item.precio||0) * item.cantidad), 0);
+
+    // 3. Abrir Modal de Cobro
+    const handleInitiateCheckout = () => {
         if(carrito.length === 0) return;
-        
+        setIsCheckoutOpen(true);
+    };
+
+    // 4. Procesar Venta Real
+    const handleConfirmarVenta = async (metodoPago: string) => {
+        // 🔒 CORRECCIÓN AQUÍ: Si no hay barbero cargado, detenemos la función.
+        // Esto le asegura a TypeScript que 'barbero' no es null de aquí en adelante.
+        if (!barbero) return; 
+
         try {
             const promesas = carrito.map(item => fetch(`/api/insumos/${item.id_insumo}`, {
                 method: 'PUT',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ 
                     ...item,
-                    // Aseguramos leer el stock correcto para restarlo
                     stock_bodega: Number(item.stock_bodega || item.stock || 0) - item.cantidad ,
-
-                    id_bar: barbero.id_bar,       // Quién vende
-                cantidad_venta: item.cantidad, // Cuántos vende
-                precio_venta: item.costo || item.precio // A cómo lo vende
+                    id_bar: barbero.id_bar, // Ahora TS sabe que esto es seguro
+                    cantidad_venta: item.cantidad,
+                    precio_venta: item.costo || item.precio,
+                    metodo_pago: metodoPago
                 })
             }));
 
             await Promise.all(promesas);
-            alert("✅ Venta registrada correctamente");
-            setCarrito([]);
+
+            const fechaHoy = new Date().toLocaleDateString();
+            const horaHoy = new Date().toLocaleTimeString();
+            
+            setTicketData({
+                cliente: "Venta de Mostrador",
+                servicio: carrito.map(c => `${c.nom_insumo} (x${c.cantidad})`).join(', '),
+                precio: totalCarrito,
+                // TS ya sabe que barbero existe gracias al 'if' del inicio
+                barbero: `${barbero.nom_bar} ${barbero.apell_bar || ''}`,
+                fecha: fechaHoy,
+                hora: horaHoy,
+                folio: `V-${Math.floor(Math.random() * 10000)}`,
+                metodoPago: metodoPago
+            });
+
+            setCarrito([]); 
+            setIsCheckoutOpen(false); 
             cargarInventario(); 
 
-        } catch(e) { alert("Error al procesar venta"); }
+        } catch(e) { 
+            alert("Error al procesar venta"); 
+            setIsCheckoutOpen(false);
+        }
     };
 
     const agregar = (p: any) => {
@@ -90,16 +115,37 @@ export default function TiendaBarbero() {
         }
     };
 
+    // Si barbero es null, no renderizamos nada (esto protege el render visual)
     if (!barbero) return null;
 
     return (
         <>
-            <main style={{maxWidth:'1000px', margin:'0 auto'}}>
+            <Head><title>Tienda | Punto de Venta</title></Head>
+
+            {isCheckoutOpen && (
+                <CheckoutModal 
+                    cita={{ 
+                        nombre_servicio: `Venta de ${carrito.length} productos`, 
+                        precio: totalCarrito 
+                    }}
+                    onClose={() => setIsCheckoutOpen(false)}
+                    onConfirm={handleConfirmarVenta}
+                />
+            )}
+
+            {ticketData && (
+                <TicketModal 
+                    data={ticketData} 
+                    onClose={() => setTicketData(null)} 
+                />
+            )}
+
+            <main style={{maxWidth:'1000px', margin:'0 auto', padding: '20px'}}>
                 
                 <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:30}}>
                     <div style={{display:'flex', alignItems:'center', gap:10}}>
                         <FaShoppingBag size={28} color="#0D6EFD"/>
-                        <h1 style={{margin:0, color:'white'}}>Tienda (Venta Productos)</h1>
+                        <h1 style={{margin:0, color:'white'}}>Tienda</h1>
                     </div>
                     <button 
                         onClick={() => router.push('/barbero/dashboard')} 
@@ -113,11 +159,10 @@ export default function TiendaBarbero() {
                     </button>
                 </div>
 
-                {/* MENSAJE DE DEPURACIÓN EN PANTALLA SI ALGO FALLA */}
                 {debugData && (
                     <div style={{background:'rgba(255,193,7,0.2)', color:'#ffc107', padding:15, borderRadius:8, marginBottom:20, border:'1px solid #ffc107', display:'flex', alignItems:'center', gap:10}}>
                         <FaExclamationTriangle /> 
-                        <span><b>DEBUG:</b> {debugData} (Revisa la consola F12 para ver los datos crudos)</span>
+                        <span><b>DEBUG:</b> {debugData}</span>
                     </div>
                 )}
                 
@@ -131,12 +176,10 @@ export default function TiendaBarbero() {
                             <div style={{textAlign:'center', padding:40, background:'#222', borderRadius:10, color:'#aaa'}}>
                                 <FaBoxOpen size={40} style={{marginBottom:10}}/>
                                 <p>No hay productos disponibles para venta.</p>
-                                <small>Verifica que tengan stock mayor a 0 en el panel de Admin.</small>
                             </div>
                         ) : (
                             <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(160px, 1fr))', gap:15}}>
                                 {productos.map(p => {
-                                    // Normalizamos valores para mostrar
                                     const stockDisplay = p.stock_bodega || p.stock || 0;
                                     const precioDisplay = p.costo || p.precio || 0;
 
@@ -180,11 +223,11 @@ export default function TiendaBarbero() {
                         )}
 
                         <div style={{marginTop:20, fontSize:'1.2rem', color:'white', textAlign:'right', fontWeight:'bold'}}>
-                            Total: ${carrito.reduce((acc, item) => acc + ((item.costo||item.precio||0) * item.cantidad), 0)}
+                            Total: ${totalCarrito}
                         </div>
 
                         <button 
-                            onClick={procesarVenta} 
+                            onClick={handleInitiateCheckout} 
                             disabled={carrito.length===0} 
                             style={{
                                 width:'100%', marginTop:20, padding:12, 
@@ -193,7 +236,7 @@ export default function TiendaBarbero() {
                                 borderRadius:8, fontWeight:'bold', fontSize:'1rem'
                             }}
                         >
-                            Confirmar Venta
+                            Cobrar
                         </button>
                     </div>
                 </div>

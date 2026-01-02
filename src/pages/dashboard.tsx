@@ -1,44 +1,43 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { NextPage } from 'next';
 import Head from 'next/head';
 import Link from 'next/link';
-import styles from '@/styles/Dashboard.module.css';
-import { FaCut, FaShoppingBag, FaBoxOpen, FaTrophy, FaChartPie, FaCalendarDay, FaTags } from 'react-icons/fa';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { 
+    FaCut, FaShoppingBag, FaBoxOpen, FaTrophy, FaChartLine, 
+    FaCalendarDay, FaTags, FaFilePdf, FaMoneyBillWave, FaClock, FaPrint, FaArrowRight 
+} from 'react-icons/fa';
+import { 
+    ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, 
+    ResponsiveContainer, Area, Legend 
+} from 'recharts';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 // --- INTERFACES ---
-interface CitaItem { hora: string; cliente: string; servicio: string; }
+interface CitaItem { hora: string; cliente: string; servicio: string; precio?: number; }
 interface VentaItem { producto: string; cantidad: number; total: number; vendedor: string; hora: string; }
-
-// Nueva interfaz para el detalle de cortes en PDF
-interface ServicioItem { 
-    fecha: string; 
-    hora: string; 
-    barbero: string; 
-    cliente: string; 
-    servicio: string; 
-    precio: number; 
-}
+interface ServicioItem { fecha: string; hora: string; barbero: string; cliente: string; servicio: string; precio: number; }
 
 interface Metrics {
     servicios: number;
-    productos: number; 
+    productos: number;
     insumosBajos: number;
     topBarber: string;
     proximasCitas: CitaItem[];
     ventasDetalle: VentaItem[]; 
-    serviciosDetalle: ServicioItem[]; // <--- Recibimos la lista de cortes
-    totalRevenue: number; 
+    serviciosDetalle: ServicioItem[];
 }
-
-const COLORS = ['#D4AF37', '#0D6EFD'];
 
 const DashboardPage: NextPage = () => {
     const [data, setData] = useState<Metrics | null>(null);
     const [loading, setLoading] = useState(true);
     const [period, setPeriod] = useState<'day' | 'month'>('day');
+
+    // ESTADO PARA EL MODAL DE DATOS FISCALES
+    const [showPdfModal, setShowPdfModal] = useState(false);
+    const [fiscalData, setFiscalData] = useState({
+        empresa: "Mi Barbería", rfc: "", direccion: "", iva: 16
+    });
 
     useEffect(() => {
         setLoading(true);
@@ -48,204 +47,243 @@ const DashboardPage: NextPage = () => {
             .catch(e => { console.error(e); setLoading(false); });
     }, [period]);
 
-    const totalProductosReales = (data?.productos && data.productos > 0) 
-        ? data.productos 
-        : (data?.ventasDetalle?.reduce((acc, curr) => acc + Number(curr.total), 0) || 0);
+    // --- PROCESAMIENTO DE DATOS PARA GRÁFICO COMPLEJO ---
+    // Convertimos la lista plana de ventas en datos agrupados por HORA para ver tendencias
+    const chartData = useMemo(() => {
+        if (!data) return [];
+        
+        // Creamos un mapa de horas (09:00 a 20:00)
+        const hoursMap: Record<string, { hora: string, servicios: number, productos: number }> = {};
+        for(let i=9; i<=21; i++) {
+            const h = i < 10 ? `0${i}:00` : `${i}:00`;
+            hoursMap[h] = { hora: h, servicios: 0, productos: 0 };
+        }
 
-    const chartData = [
-        { name: 'Cortes/Servicios', value: data?.servicios || 0 },
-        { name: 'Venta Productos', value: totalProductosReales },
-    ];
-    const totalIngresos = (data?.servicios || 0) + totalProductosReales;
-
-    // --- GENERAR PDF MEJORADO ---
-    const descargarReporteSimple = () => {
-        if (!data) return;
-        const doc = new jsPDF();
-        const fecha = new Date();
-
-        // Encabezado
-        doc.setFillColor(28, 28, 28);
-        doc.rect(0, 0, 210, 40, 'F');
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(22);
-        doc.text("The Gentleman's Cut", 105, 15, { align: 'center' });
-        doc.setFontSize(14);
-        doc.text(`Reporte - ${period === 'day' ? 'Diario' : 'Mensual'}`, 105, 28, { align: 'center' });
-
-        doc.setTextColor(0, 0, 0);
-        doc.setFontSize(10);
-        doc.text(`Generado: ${fecha.toLocaleString()}`, 14, 48);
-
-        // TABLA 1: Resumen General
-        autoTable(doc, {
-            startY: 55,
-            head: [['Concepto', 'Valor']],
-            body: [
-                ['Ingresos Servicios', `$${(data.servicios || 0).toLocaleString()}`],
-                ['Venta Productos', `$${totalProductosReales.toLocaleString()}`],
-                ['TOTAL INGRESOS', `$${totalIngresos.toLocaleString()}`],
-                ['Barbero Top', `${data.topBarber || 'N/A'}`],
-            ],
-            theme: 'grid',
-            headStyles: { fillColor: [212, 175, 55] },
+        // Rellenamos con Servicios
+        data.serviciosDetalle.forEach(s => {
+            const h = s.hora.substring(0, 2) + ":00";
+            if (hoursMap[h]) hoursMap[h].servicios += Number(s.precio);
         });
 
-        let finalY = (doc as any).lastAutoTable.finalY + 10;
+        // Rellenamos con Productos
+        data.ventasDetalle.forEach(v => {
+            const h = v.hora.substring(0, 2) + ":00";
+            if (hoursMap[h]) hoursMap[h].productos += Number(v.total);
+        });
 
-        // TABLA 2: Detalle de SERVICIOS (Cortes realizados)
-        if (data.serviciosDetalle && data.serviciosDetalle.length > 0) {
-            doc.setFontSize(12);
-            doc.setTextColor(0);
-            doc.text("Detalle de Servicios Realizados (Cortes):", 14, finalY);
+        return Object.values(hoursMap);
+    }, [data]);
 
+    const ingresoServicios = data?.servicios || 0;
+    const ingresoProductos = (data?.productos && data.productos > 0) ? data.productos : (data?.ventasDetalle?.reduce((acc, curr) => acc + Number(curr.total), 0) || 0);
+    const ingresoTotalBruto = ingresoServicios + ingresoProductos;
+
+    // --- GENERACIÓN DE PDF ---
+    const generarPDF = () => {
+        if (!data) return;
+        const doc = new jsPDF();
+        const fechaImpresion = new Date();
+        const tituloReporte = period === 'day' ? `CORTE DE CAJA DIARIO` : `ESTADO DE RESULTADOS MENSUAL`;
+        const tasaIVA = fiscalData.iva / 100;
+        const subtotalFiscal = ingresoTotalBruto / (1 + tasaIVA);
+        const impuestosFiscal = ingresoTotalBruto - subtotalFiscal;
+
+        // Encabezado
+        doc.setFillColor(21, 25, 34); doc.rect(0, 0, 210, 45, 'F');
+        doc.setTextColor(212, 175, 55); doc.setFontSize(18); doc.setFont("helvetica", "bold");
+        doc.text(fiscalData.empresa.toUpperCase(), 15, 18);
+        doc.setTextColor(255, 255, 255); doc.setFontSize(10); doc.setFont("helvetica", "normal");
+        doc.text(`RFC: ${fiscalData.rfc}`, 15, 25); 
+        doc.text(fiscalData.direccion, 15, 30);
+        
+        doc.setFontSize(14); doc.text(tituloReporte, 195, 20, { align: 'right' });
+        doc.setFontSize(9); doc.text(`Emisión: ${fechaImpresion.toLocaleString()}`, 195, 35, { align: 'right' });
+
+        // Resumen
+        doc.setTextColor(0, 0, 0); doc.setFontSize(12); doc.text("RESUMEN CONTABLE", 15, 55);
+        autoTable(doc, {
+            startY: 60,
+            head: [['CONCEPTO', 'IMPORTE']],
+            body: [
+                ['Ventas Servicios', `$${ingresoServicios.toLocaleString('es-MX', {minimumFractionDigits:2})}`],
+                ['Ventas Productos', `$${ingresoProductos.toLocaleString('es-MX', {minimumFractionDigits:2})}`],
+                ['SUBTOTAL BASE', `$${subtotalFiscal.toLocaleString('es-MX', {minimumFractionDigits:2})}`],
+                [`IVA TRASLADADO (${fiscalData.iva}%)`, `$${impuestosFiscal.toLocaleString('es-MX', {minimumFractionDigits:2})}`],
+                ['TOTAL NETO', { content: `$${ingresoTotalBruto.toLocaleString('es-MX', {minimumFractionDigits:2})}`, styles: { fontStyle: 'bold', fillColor: [220, 255, 220] } }],
+            ],
+            theme: 'grid', headStyles: { fillColor: [44, 62, 80] }
+        });
+
+        let finalY = (doc as any).lastAutoTable.finalY + 15;
+
+        // Tablas Detalle
+        if (data.serviciosDetalle?.length > 0) {
+            doc.text("DETALLE OPERATIVO", 15, finalY);
             autoTable(doc, {
-                startY: finalY + 5,
-                head: [['Fecha', 'Hora', 'Barbero', 'Cliente', 'Servicio', 'Precio']],
-                body: data.serviciosDetalle.map(s => [
-                    s.fecha,
-                    s.hora.slice(0,5),
-                    s.barbero,
-                    s.cliente,
-                    s.servicio,
-                    `$${s.precio}`
-                ]),
-                theme: 'striped',
-                headStyles: { fillColor: [212, 175, 55] }, // Dorado
-                styles: { fontSize: 9 }
+                startY: finalY + 5, head: [['Hora', 'Folio', 'Barbero', 'Servicio', 'Monto']],
+                body: data.serviciosDetalle.map((s, i) => [s.hora.slice(0,5), `S-${1000+i}`, s.barbero, s.servicio, `$${s.precio}`]),
+                theme: 'striped', headStyles: { fillColor: [212, 175, 55], textColor: 0 }, styles: { fontSize: 8 }
             });
-            finalY = (doc as any).lastAutoTable.finalY + 10;
+            finalY = (doc as any).lastAutoTable.finalY + 15;
         }
+        
+        // Firmas
+        if (finalY > 250) { doc.addPage(); finalY = 40; }
+        doc.line(30, finalY + 30, 90, finalY + 30); doc.text("ELABORÓ", 60, finalY + 35, { align: 'center' });
+        doc.line(120, finalY + 30, 180, finalY + 30); doc.text("AUTORIZÓ", 150, finalY + 35, { align: 'center' });
 
-        // TABLA 3: Detalle de PRODUCTOS Vendidos
-        if (data.ventasDetalle && data.ventasDetalle.length > 0) {
-            doc.setFontSize(12);
-            doc.setTextColor(0);
-            doc.text("Detalle de Productos Vendidos:", 14, finalY);
-
-            autoTable(doc, {
-                startY: finalY + 5,
-                head: [['Hora', 'Producto', 'Vendedor', 'Cant', 'Total']],
-                body: data.ventasDetalle.map(v => [
-                    v.hora,
-                    v.producto,
-                    v.vendedor,
-                    v.cantidad,
-                    `$${v.total}`
-                ]),
-                theme: 'striped',
-                headStyles: { fillColor: [13, 110, 253] }, // Azul
-                styles: { fontSize: 9 }
-            });
-        }
-
-        doc.save(`Reporte_${period}_${fecha.toLocaleDateString()}.pdf`);
+        doc.save(`Reporte_${period}.pdf`);
+        setShowPdfModal(false);
     };
+
+    if (loading) return <div style={{color:'white', padding: 50, textAlign:'center'}}>Analizando datos...</div>;
 
     return (
         <>
-            <Head><title>Panel de Control</title></Head>
-            <div className={styles.dashboardContainer}>
-                
-                <header className={styles.header} style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: 30, flexWrap:'wrap', gap: 15}}>
-                    <div>
-                        <h1 className={styles.title}>Panel de Control</h1>
-                        <span className={styles.date}>Resumen del Negocio</span>
-                    </div>
-                    
-                    <div style={{display:'flex', gap: 15}}>
-                        <div style={{background: '#2A2A2A', padding: '5px', borderRadius: '8px', display: 'flex', gap: '5px'}}>
-                            <button onClick={() => setPeriod('day')} style={{background: period === 'day' ? 'var(--color-accent)' : 'transparent', color: period === 'day' ? 'black' : '#aaa', border: 'none', padding: '8px 20px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold'}}>Hoy</button>
-                            <button onClick={() => setPeriod('month')} style={{background: period === 'month' ? 'var(--color-accent)' : 'transparent', color: period === 'month' ? 'black' : '#aaa', border: 'none', padding: '8px 20px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold'}}>Este Mes</button>
+            <Head><title>Dashboard Pro</title></Head>
+
+            {/* MODAL CONFIGURACIÓN PDF */}
+            {showPdfModal && (
+                <div style={{position:'fixed', top:0, left:0, width:'100%', height:'100%', background:'rgba(0,0,0,0.85)', zIndex:999, display:'flex', alignItems:'center', justifyContent:'center'}}>
+                    <div style={{background:'#1F2937', padding:30, borderRadius:12, width:'400px', border:'1px solid #374151'}}>
+                        <h3 style={{color:'white', marginTop:0, display:'flex', alignItems:'center', gap:10}}><FaPrint /> Datos de Encabezado</h3>
+                        <input type="text" placeholder="Nombre Empresa" value={fiscalData.empresa} onChange={e=>setFiscalData({...fiscalData, empresa:e.target.value})} style={inputStyle}/>
+                        <input type="text" placeholder="RFC" value={fiscalData.rfc} onChange={e=>setFiscalData({...fiscalData, rfc:e.target.value})} style={inputStyle}/>
+                        <input type="text" placeholder="Dirección" value={fiscalData.direccion} onChange={e=>setFiscalData({...fiscalData, direccion:e.target.value})} style={inputStyle}/>
+                        <div style={{display:'flex', gap:10, alignItems:'center', marginTop:10}}>
+                            <label style={{color:'#aaa'}}>IVA %:</label>
+                            <input type="number" value={fiscalData.iva} onChange={e=>setFiscalData({...fiscalData, iva:Number(e.target.value)})} style={{...inputStyle, width:80, marginTop:0}}/>
                         </div>
-                        <button onClick={descargarReporteSimple} style={{ background: '#D4AF37', color: 'black', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>Descargar PDF</button>
+                        <div style={{display:'flex', gap:10, marginTop:20}}>
+                            <button onClick={()=>setShowPdfModal(false)} style={btnCancelStyle}>Cancelar</button>
+                            <button onClick={generarPDF} style={btnConfirmStyle}>Descargar</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <div style={{ padding: '20px', maxWidth: '1400px', margin: '0 auto', fontFamily: 'Arial, sans-serif' }}>
+                
+                {/* HEADER */}
+                <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', background: '#111827', padding: '20px', borderRadius: '16px', border: '1px solid #374151' }}>
+                    <div>
+                        <h1 style={{ margin: 0, color: 'white', fontSize: '1.5rem', display:'flex', alignItems:'center', gap: 10 }}>
+                            <FaChartLine style={{ color: '#D4AF37' }} /> Panel de Control
+                        </h1>
+                        <span style={{color: '#6B7280', fontSize: '0.9rem'}}>Visión general del negocio</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                        <div style={{ background: '#1F2937', padding: '4px', borderRadius: '8px', display: 'flex' }}>
+                            <button onClick={() => setPeriod('day')} style={period === 'day' ? activePeriodBtn : periodBtn}>Diario</button>
+                            <button onClick={() => setPeriod('month')} style={period === 'month' ? activePeriodBtn : periodBtn}>Mensual</button>
+                        </div>
+                        <button onClick={() => setShowPdfModal(true)} style={pdfBtnStyle}><FaFilePdf /> Reporte Fiscal</button>
                     </div>
                 </header>
 
-                {/* TARJETAS */}
-                <div className={styles.dailySummaryGrid} style={{ marginBottom: '30px', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
+                {/* KPI CARDS CON LINKS */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', marginBottom: '30px' }}>
+                    
                     <Link href="/citas" style={{textDecoration:'none'}}>
-                        <div className={styles.metricCard} style={{cursor:'pointer', borderLeft: '4px solid #D4AF37'}}>
-                            <div className={styles.cardHeader}><span>Ingresos Servicios</span><FaCut style={{color: '#D4AF37'}} /></div>
-                            <div className={styles.cardValue}>${(data?.servicios || 0).toLocaleString()}</div>
-                        </div>
+                        <KPI_Card title="Caja Total" value={`$${ingresoTotalBruto.toLocaleString()}`} icon={<FaMoneyBillWave />} color="#10B981" subtext="Ver Agenda" />
                     </Link>
+
+                    <Link href="/citas" style={{textDecoration:'none'}}>
+                        <KPI_Card title="Servicios" value={`$${ingresoServicios.toLocaleString()}`} icon={<FaCut />} color="#D4AF37" subtext={`${data?.serviciosDetalle?.length} cortes`} />
+                    </Link>
+
                     <Link href="/inventario" style={{textDecoration:'none'}}>
-                        <div className={styles.metricCard} style={{cursor:'pointer', borderLeft: '4px solid #0D6EFD'}}>
-                            <div className={styles.cardHeader}><span>Venta Productos</span><FaShoppingBag style={{color: '#0D6EFD'}} /></div>
-                            <div className={styles.cardValue}>${totalProductosReales.toLocaleString()}</div>
-                        </div>
+                        <KPI_Card title="Retail" value={`$${ingresoProductos.toLocaleString()}`} icon={<FaShoppingBag />} color="#3B82F6" subtext={`${data?.ventasDetalle?.length} productos`} />
                     </Link>
-                    <Link href="/personal" style={{textDecoration:'none'}}>
-                        <div className={styles.metricCard} style={{cursor:'pointer', borderLeft: '4px solid #28a745'}}>
-                            <div className={styles.cardHeader}><span>Top Barbero</span><FaTrophy style={{color: '#28a745'}} /></div>
-                            <div className={styles.cardValue} style={{fontSize:'1.3rem'}}>{data?.topBarber || "N/A"}</div>
-                        </div>
-                    </Link>
+
                     <Link href="/insumos" style={{textDecoration:'none'}}>
-                        <div className={styles.metricCard} style={{cursor:'pointer', borderLeft: data?.insumosBajos && data.insumosBajos > 0 ? '4px solid #DC3545' : '4px solid #6c757d'}}>
-                            <div className={styles.cardHeader}><span>Alerta Bodega</span><FaBoxOpen style={{color: data?.insumosBajos && data.insumosBajos > 0 ? '#DC3545' : '#aaa'}} /></div>
-                            <div className={styles.cardValue} style={{color: data?.insumosBajos && data.insumosBajos > 0 ? '#DC3545' : 'white'}}>{data?.insumosBajos || 0}</div>
-                        </div>
+                         {/* Usamos lógica para alertar si hay insumos bajos */}
+                        <KPI_Card 
+                            title="Alerta Insumos" 
+                            value={data?.insumosBajos?.toString() || "0"} 
+                            icon={<FaBoxOpen />} 
+                            color={data?.insumosBajos && data.insumosBajos > 0 ? "#EF4444" : "#6B7280"} 
+                            subtext="Items por agotarse" 
+                        />
                     </Link>
                 </div>
 
-                {/* GRÁFICO Y LISTAS */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', alignItems: 'start' }}>
+                {/* SECCIÓN PRINCIPAL: GRÁFICO COMPLEJO + TIMELINE CITAS */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '20px' }}>
                     
-                    {/* 1. GRÁFICO */}
-                    <div style={{ backgroundColor: '#2A2A2A', borderRadius: '12px', padding: '25px', border: '1px solid #444', height: '100%', minHeight: '400px' }}>
-                        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: 20}}>
-                            <h3 style={{ color: 'white', margin: 0 }}><FaChartPie style={{color: '#D4AF37'}}/> Ingresos</h3>
-                            <span style={{background: '#333', padding: '5px 10px', borderRadius: '15px', fontWeight:'bold', color:'white'}}>${totalIngresos.toLocaleString()}</span>
-                        </div>
-                        <div style={{ width: '100%', height: 300 }}>
+                    {/* 1. GRÁFICO DE TENDENCIAS (COMPLEJO PERO ENTENDIBLE) */}
+                    <div style={cardStyle}>
+                        <h3 style={cardTitleStyle}>Rendimiento por Hora (Tendencia)</h3>
+                        <p style={{color:'#6B7280', fontSize:'0.85rem', marginBottom: 20}}>Analiza las horas pico de facturación (Servicios + Productos)</p>
+                        
+                        <div style={{ width: '100%', height: 350 }}>
                             <ResponsiveContainer>
-                                <PieChart>
-                                    <Pie data={chartData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={5} dataKey="value" label={({ percent }) => (percent || 0) > 0 ? `${((percent || 0) * 100).toFixed(0)}%` : ''}>
-                                        {chartData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-                                    </Pie>
-                                    <Tooltip formatter={(value: number) => `$${value.toLocaleString()}`} contentStyle={{backgroundColor: '#333', borderColor: '#555', color: 'white'}} />
-                                    <Legend verticalAlign="bottom" height={36}/>
-                                </PieChart>
+                                <ComposedChart data={chartData}>
+                                    <defs>
+                                        <linearGradient id="colorServicios" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#D4AF37" stopOpacity={0.3}/>
+                                            <stop offset="95%" stopColor="#D4AF37" stopOpacity={0}/>
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
+                                    <XAxis dataKey="hora" stroke="#9CA3AF" style={{fontSize:'0.8rem'}} />
+                                    <YAxis stroke="#9CA3AF" style={{fontSize:'0.8rem'}} tickFormatter={(value) => `$${value}`}/>
+                                    <Tooltip 
+                                        contentStyle={{backgroundColor: '#111827', border: '1px solid #374151', borderRadius: '8px', color:'white'}}
+                                        formatter={(value: number) => [`$${value}`, '']}
+                                    />
+                                    <Legend />
+                                    {/* Barras para Servicios (Base sólida) */}
+                                    <Bar dataKey="servicios" name="Ingreso Servicios" barSize={20} fill="#D4AF37" radius={[4, 4, 0, 0]} />
+                                    {/* Área para Productos (Tendencia suave encima) */}
+                                    <Area type="monotone" dataKey="productos" name="Ingreso Productos" stroke="#3B82F6" fill="#3B82F6" strokeWidth={3} fillOpacity={0.2} />
+                                </ComposedChart>
                             </ResponsiveContainer>
                         </div>
                     </div>
 
-                    {/* 2. PRÓXIMAS CITAS */}
-                    <div style={{ backgroundColor: '#2A2A2A', borderRadius: '12px', padding: '25px', border: '1px solid #444', height: '100%', minHeight: '400px' }}>
-                        <h3 style={{ color: 'white', marginTop: 0, marginBottom: 20 }}><FaCalendarDay style={{color: '#0D6EFD'}}/> Citas Hoy</h3>
-                        {data?.proximasCitas && data.proximasCitas.length > 0 ? (
-                            <ul style={{listStyle: 'none', padding: 0}}>
-                                {data.proximasCitas.map((cita, index) => (
-                                    <li key={index} style={{display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #444'}}>
-                                        <div style={{display:'flex', alignItems:'center', gap: 15}}>
-                                            <div style={{background: '#333', color: 'var(--color-accent)', padding: '5px', borderRadius: '5px', fontWeight: 'bold'}}>{cita.hora.slice(0,5)}</div>
-                                            <div><div style={{color: 'white', fontWeight: 'bold'}}>{cita.cliente}</div><div style={{color: '#aaa', fontSize: '0.85em'}}>{cita.servicio}</div></div>
-                                        </div>
-                                    </li>
-                                ))}
-                            </ul>
-                        ) : <p style={{color: '#666', textAlign:'center', marginTop: 50}}>No hay citas hoy.</p>}
-                        <div style={{marginTop: 20, textAlign: 'center'}}><Link href="/citas" style={{color: 'var(--color-accent)'}}>Ver Agenda &rarr;</Link></div>
-                    </div>
+                    {/* 2. TIMELINE DE PRÓXIMAS CITAS (MEJORADO VISUALMENTE) */}
+                    <div style={cardStyle}>
+                        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: 20}}>
+                            <h3 style={cardTitleStyle}><FaCalendarDay style={{color: '#8B5CF6', marginRight: 10}}/> Agenda de Hoy</h3>
+                            <Link href="/citas" style={{color:'#D4AF37', fontSize:'0.9rem', display:'flex', alignItems:'center', gap:5, textDecoration:'none'}}>
+                                Gestionar <FaArrowRight size={10}/>
+                            </Link>
+                        </div>
 
-                    {/* 3. VENTAS PRODUCTOS */}
-                    <div style={{ backgroundColor: '#2A2A2A', borderRadius: '12px', padding: '25px', border: '1px solid #444', height: '100%', minHeight: '400px' }}>
-                        <h3 style={{ color: 'white', marginTop: 0, marginBottom: 20 }}><FaTags style={{color: '#28a745'}}/> Ventas Productos</h3>
-                        {data?.ventasDetalle && data.ventasDetalle.length > 0 ? (
-                            <div style={{maxHeight: '300px', overflowY: 'auto'}}>
-                                <ul style={{listStyle: 'none', padding: 0}}>
-                                    {data.ventasDetalle.map((venta, index) => (
-                                        <li key={index} style={{padding: '10px 0', borderBottom: '1px solid #444', display:'flex', justifyContent:'space-between'}}>
-                                            <div><div style={{color:'white', fontWeight:'bold'}}>{venta.producto}</div><div style={{color:'#aaa', fontSize:'0.8rem'}}>Vendió: {venta.vendedor}</div></div>
-                                            <div style={{textAlign:'right'}}><div style={{color:'#28a745', fontWeight:'bold'}}>${venta.total}</div><div style={{color:'#666', fontSize:'0.8rem'}}>x{venta.cantidad}</div></div>
-                                        </li>
-                                    ))}
-                                </ul>
+                        {data?.proximasCitas && data.proximasCitas.length > 0 ? (
+                            <div style={{display:'flex', flexDirection:'column', gap: 15, maxHeight: '380px', overflowY: 'auto', paddingRight: 5}}>
+                                {data.proximasCitas.map((cita, i) => (
+                                    <div key={i} style={{display:'flex', gap: 15, alignItems:'center'}}>
+                                        {/* Columna Hora */}
+                                        <div style={{display:'flex', flexDirection:'column', alignItems:'center', minWidth: 50}}>
+                                            <span style={{color:'white', fontWeight:'bold'}}>{cita.hora.slice(0,5)}</span>
+                                            <div style={{height: '100%', width: 2, background: '#374151', flex: 1, marginTop: 5}}></div>
+                                        </div>
+                                        
+                                        {/* Tarjeta Cita */}
+                                        <div style={{
+                                            background: '#111827', flex: 1, padding: '12px', borderRadius: '10px', 
+                                            borderLeft: '4px solid #D4AF37', border: '1px solid #374151',
+                                            display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                                        }}>
+                                            <div>
+                                                <div style={{color: 'white', fontWeight: '600'}}>{cita.cliente}</div>
+                                                <div style={{color: '#9CA3AF', fontSize: '0.85rem'}}>{cita.servicio}</div>
+                                            </div>
+                                            <div style={{background: '#374151', padding: '5px 8px', borderRadius: '6px', color:'#D4AF37', fontSize:'0.8rem'}}>
+                                                <FaClock /> Pendiente
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
-                        ) : <p style={{color: '#666', textAlign:'center', marginTop: 50}}>No hay ventas hoy.</p>}
-                        <div style={{marginTop: 20, textAlign: 'center'}}><Link href="/inventario" style={{color: 'var(--color-accent)'}}>Ir a Inventario &rarr;</Link></div>
+                        ) : (
+                            <div style={{textAlign:'center', padding: 50, color: '#6B7280'}}>
+                                <FaCalendarDay size={40} style={{marginBottom: 10, opacity:0.5}}/>
+                                <p>No hay más citas programadas para hoy.</p>
+                            </div>
+                        )}
                     </div>
 
                 </div>
@@ -253,5 +291,35 @@ const DashboardPage: NextPage = () => {
         </>
     );
 };
+
+// --- ESTILOS & COMPONENTES ---
+const cardStyle: React.CSSProperties = { backgroundColor: '#1F2937', borderRadius: '16px', padding: '25px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', height: '100%', border: '1px solid #374151' };
+const cardTitleStyle: React.CSSProperties = { color: 'white', margin: '0 0 10px 0', fontSize: '1.2rem', fontWeight: '600' };
+const inputStyle: React.CSSProperties = { width:'100%', padding:10, background:'#111827', border:'1px solid #4B5563', color:'white', borderRadius:6, marginTop:10 };
+const btnCancelStyle: React.CSSProperties = { flex:1, padding:12, background:'transparent', border:'1px solid #4B5563', color:'white', borderRadius:6, cursor:'pointer' };
+const btnConfirmStyle: React.CSSProperties = { flex:1, padding:12, background:'#D4AF37', border:'none', color:'black', borderRadius:6, cursor:'pointer', fontWeight:'bold' };
+
+const KPI_Card = ({ title, value, icon, color, subtext }: any) => (
+    <div style={{ 
+        backgroundColor: '#1F2937', borderRadius: '16px', padding: '20px', 
+        borderLeft: `6px solid ${color}`, boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+        cursor: 'pointer', transition: 'transform 0.2s', border: '1px solid #374151'
+    }}
+    onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-3px)'}
+    onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+    >
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 15 }}>
+            <span style={{ color: '#9CA3AF', fontWeight: '600', fontSize: '0.9rem' }}>{title}</span>
+            <div style={{ color: color, background: 'rgba(255,255,255,0.05)', padding: 8, borderRadius: 8 }}>{icon}</div>
+        </div>
+        <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: 'white' }}>{value}</div>
+        <div style={{ fontSize: '0.85rem', color: '#6B7280', marginTop: 5 }}>{subtext}</div>
+    </div>
+);
+
+// Estilos Botones Header
+const periodBtn = { background: 'transparent', color: '#D1D5DB', border: 'none', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' };
+const activePeriodBtn = { background: '#D4AF37', color: 'black', border: 'none', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' };
+const pdfBtnStyle = { background: '#DC3545', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 8 };
 
 export default DashboardPage;

@@ -1,74 +1,62 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { db } from '@/lib/db';
-import bcrypt from 'bcryptjs';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     
-    // --- GET: Listar Barberos ---
+    // --- OBTENER LISTA DE BARBEROS (GET) ---
     if (req.method === 'GET') {
         try {
-            const result = await db.query(`
-                SELECT * FROM barber 
-                WHERE email NOT LIKE 'del_%' 
-                ORDER BY id_bar DESC
-            `);
+            // Ordenamos por estado (Activos primero) y luego por nombre
+            const query = `
+                SELECT id_bar, nom_bar, apell_bar, tel_bar, email, estado 
+                FROM barber 
+                ORDER BY estado ASC, nom_bar ASC
+            `;
+            const result = await db.query(query);
             return res.status(200).json(result.rows);
         } catch (error) {
-            console.error("Error al listar:", error);
-            return res.status(500).json({ message: 'Error al listar personal' });
+            console.error("Error al obtener personal:", error);
+            return res.status(500).json({ message: 'Error al cargar la lista de personal' });
         }
     }
 
-    // --- POST: Crear Nuevo Barbero ---
+    // --- CREAR NUEVO BARBERO (POST) ---
     if (req.method === 'POST') {
-        console.log("📝 Intentando crear barbero:", req.body);
-
-        const { nom_bar, apell_bar, email, password } = req.body;
-
-        if (!nom_bar || !email || !password) {
-            return res.status(400).json({ message: 'Faltan datos obligatorios' });
-        }
-
         try {
-            // 1. Encriptar contraseña
-            const salt = await bcrypt.genSalt(10);
-            const hashedPassword = await bcrypt.hash(password, salt);
+            console.log("📝 Intentando crear barbero:", req.body); // Debug en consola del servidor
 
-            // 2. Insertar
-            // ⚠️ CORRECCIÓN: Agregamos 'tel_bar' y 'edad_bar' con datos por defecto
-            // para que la base de datos no rechace el registro.
+            const { nom_bar, apell_bar, tel_bar, email, pass_bar } = req.body;
+
+            // 1. Validaciones básicas
+            if (!nom_bar || !apell_bar || !email || !pass_bar) {
+                return res.status(400).json({ message: 'Faltan datos obligatorios (Nombre, Apellido, Email o Contraseña).' });
+            }
+
+            // 2. Insertar en Base de Datos (Incluyendo tel_bar)
             const query = `
-                INSERT INTO barber (
-                    nom_bar, apell_bar, email, password, 
-                    posicion, estado, 
-                    tel_bar, edad_bar, -- Campos obligatorios agregados
-                    st_navajas, st_papel, st_talco, st_aftershave, st_desinfectante
-                )
-                VALUES (
-                    $1, $2, $3, $4, 
-                    'Barbero', 'Activo', 
-                    '0000000000', 25, -- Teléfono dummy y Edad por defecto (25 años)
-                    200, 500, 180, 180, 500
-                )
+                INSERT INTO barber (nom_bar, apell_bar, tel_bar, email, pass_bar, estado)
+                VALUES ($1, $2, $3, $4, $5, 'Activo')
                 RETURNING id_bar;
             `;
             
-            await db.query(query, [nom_bar, apell_bar || '', email, hashedPassword]);
-            
-            console.log("✅ Barbero creado con éxito");
-            return res.status(201).json({ message: 'Barbero creado exitosamente' });
+            // Aseguramos que tel_bar no sea undefined (enviamos string vacío si no hay)
+            const values = [nom_bar, apell_bar, tel_bar || '', email, pass_bar];
+
+            await db.query(query, values);
+
+            return res.status(201).json({ message: 'Barbero registrado exitosamente' });
 
         } catch (error: any) {
-            console.error("❌ ERROR AL CREAR BARBERO:", error); 
+            console.error("Error al crear barbero:", error);
             
-            if (error.code === '23505') {
-                return res.status(400).json({ message: 'El correo electrónico ya está registrado.' });
-            }
-            if (error.code === '42703') {
-                return res.status(500).json({ message: 'Faltan columnas de insumos en la BD. Ejecuta el SQL de actualización.' });
+            // Error código 23505 en PostgreSQL significa "Llave duplicada" (Email repetido)
+            if (error?.code === '23505') {
+                return res.status(409).json({ message: 'Ese correo electrónico ya está registrado.' });
             }
 
-            return res.status(500).json({ message: 'Error interno al crear barbero', detail: error.message });
+            return res.status(500).json({ message: 'Error interno del servidor al crear barbero.' });
         }
     }
+
+    return res.status(405).json({ message: 'Método no permitido' });
 }

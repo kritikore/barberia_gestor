@@ -1,93 +1,104 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { db } from '@/lib/db';
-import bcrypt from 'bcryptjs';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     const { id } = req.query;
+    
+    // Validar ID
+    if (!id || Array.isArray(id)) {
+        return res.status(400).json({ message: 'ID de barbero inválido' });
+    }
 
-    if (req.method === 'GET') {
-        // ... (Tu código GET existente) ...
+    // --- ELIMINAR / DAR DE BAJA (DELETE) ---
+    if (req.method === 'DELETE') {
         try {
-            const perfilRes = await db.query('SELECT * FROM barber WHERE id_bar = $1', [id]);
-            if (perfilRes.rows.length === 0) return res.status(404).json({ message: 'No encontrado' });
+            // 1. Verificamos si tiene historial (Citas o Ventas)
+            const checkHistorial = await db.query(
+                `SELECT 
+                    (SELECT COUNT(*) FROM cita WHERE id_bar = $1) + 
+                    (SELECT COUNT(*) FROM venta_producto WHERE id_bar = $1) as total`,
+                [id]
+            );
             
-            const b = perfilRes.rows[0];
-            const insumosCalculados = [
-                { nombre: 'Navajas', actual: b.st_navajas, max: 200, pct: (b.st_navajas / 200) * 100 },
-                { nombre: 'Papel Cuello', actual: b.st_papel, max: 500, pct: (b.st_papel / 500) * 100 },
-                { nombre: 'Talco', actual: b.st_talco, max: 180, pct: (b.st_talco / 180) * 100 },
-                { nombre: 'After Shave', actual: b.st_aftershave, max: 180, pct: (b.st_aftershave / 180) * 100 },
-                { nombre: 'Desinfectante', actual: b.st_desinfectante, max: 500, pct: (b.st_desinfectante / 500) * 100 },
-            ];
-            const citasRes = await db.query(`
-                SELECT c.fecha, c.hora, s.tipo as detalle, s.precio as monto, 'Cita' as tipo_movimiento
-                FROM cita c JOIN servicio s ON c.id_serv = s.id_serv
-                WHERE c.id_bar = $1 AND c.estado = 'Completada'
-            `, [id]);
-            const historial = [...citasRes.rows].sort((x, y) => new Date(y.fecha).getTime() - new Date(x.fecha).getTime());
-            return res.status(200).json({ perfil: b, insumos: insumosCalculados, historial });
-        } catch (error) { return res.status(500).json({ message: 'Error server' }); }
-    }
+            const tieneHistorial = parseInt(checkHistorial.rows[0].total) > 0;
 
-    else if (req.method === 'PUT') {
-        // ... (Tu código PUT existente) ...
-        if (req.body && !req.body.nom_bar && !req.body.email) {
-             try {
-                await db.query(`
-                    UPDATE barber SET st_navajas = 200, st_papel = 500, st_talco = 180, st_aftershave = 180, st_desinfectante = 500
-                    WHERE id_bar = $1
-                `, [id]);
-                return res.status(200).json({ message: '✅ Stock reabastecido' });
-            } catch (error) { return res.status(500).json({ message: 'Error re-stock' }); }
-        } else {
-            const { nom_bar, apell_bar, email, password } = req.body;
-            try {
-                let query = "UPDATE barber SET nom_bar=$1, apell_bar=$2, email=$3 WHERE id_bar=$4";
-                let values = [nom_bar, apell_bar, email, id];
-                if (password && password.trim() !== '') {
-                    const salt = await bcrypt.genSalt(10);
-                    const hash = await bcrypt.hash(password, salt);
-                    query = "UPDATE barber SET nom_bar=$1, apell_bar=$2, email=$3, password=$4 WHERE id_bar=$5";
-                    values = [nom_bar, apell_bar, email, hash, id];
-                }
-                await db.query(query, values);
-                return res.status(200).json({ message: 'Datos actualizados' });
-            } catch (error) { return res.status(500).json({ message: 'Error al actualizar perfil' }); }
-        }
-    }
-
-    // --- DELETE CORREGIDO ---
-    else if (req.method === 'DELETE') {
-        try {
-            // 1. Verificar primero si ya estaba borrado para no repetir el prefijo 'del_'
-            const check = await db.query("SELECT email FROM barber WHERE id_bar = $1", [id]);
-            if (check.rows.length > 0 && check.rows[0].email.startsWith('del_')) {
-                return res.status(200).json({ message: 'Este usuario ya estaba eliminado.' });
+            if (tieneHistorial) {
+                // BAJA LÓGICA: No borramos, solo desactivamos para no romper reportes contables
+                await db.query("UPDATE barber SET estado = 'Inactivo' WHERE id_bar = $1", [id]);
+                return res.status(200).json({ message: 'El barbero tiene historial. Se cambió su estado a Inactivo.' });
+            } else {
+                // BAJA FÍSICA: Si es nuevo y no vendió nada, lo borramos de verdad
+                await db.query("DELETE FROM barber WHERE id_bar = $1", [id]);
+                return res.status(200).json({ message: 'Barbero eliminado permanentemente.' });
             }
-
-            // 2. Intentar borrado físico
-            await db.query("DELETE FROM barber WHERE id_bar = $1", [id]);
-            return res.status(200).json({ message: 'Barbero eliminado (Sin historial)' });
 
         } catch (error: any) {
-            // 3. Si falla por FK (Historial), archivar
-            if (error.code === '23503') {
-                try {
-                    await db.query(`
-                        UPDATE barber 
-                        SET estado = 'Inactivo', 
-                            email = CONCAT('del_', id_bar::text, '_', email), 
-                            password = 'DELETED' 
-                        WHERE id_bar = $1
-                    `, [id]);
-                    return res.status(200).json({ message: 'Barbero archivado correctamente.' });
-                } catch (updateError: any) {
-                    console.error("Error archivando:", updateError);
-                    return res.status(500).json({ message: 'Error al archivar' });
-                }
-            }
             console.error(error);
-            return res.status(500).json({ message: 'Error interno' });
+            return res.status(500).json({ message: 'Error al eliminar barbero' });
         }
     }
+
+    // --- ACTUALIZAR DATOS (PUT) ---
+    if (req.method === 'PUT') {
+        try {
+            const { nom_bar, apell_bar, tel_bar, email, pass_bar, estado } = req.body;
+
+            // Validación básica
+            if (!nom_bar || !email) {
+                return res.status(400).json({ message: 'Nombre y Email son obligatorios' });
+            }
+
+            // LÓGICA DE CONTRASEÑA:
+            // Si el campo pass_bar viene con texto, actualizamos TODO incluida la contraseña.
+            // Si viene vacío, actualizamos todo MENOS la contraseña (mantenemos la vieja).
+            
+            let query = '';
+            let values = [];
+
+            if (pass_bar && pass_bar.trim() !== '') {
+                // Caso A: Quiere cambiar contraseña
+                query = `
+                    UPDATE barber 
+                    SET nom_bar = $1, 
+                        apell_bar = $2, 
+                        tel_bar = $3, 
+                        email = $4, 
+                        pass_bar = $5, 
+                        estado = $6
+                    WHERE id_bar = $7
+                `;
+                values = [nom_bar, apell_bar, tel_bar, email, pass_bar, estado, id];
+            } else {
+                // Caso B: Mantiene contraseña actual (No incluimos pass_bar en el UPDATE)
+                query = `
+                    UPDATE barber 
+                    SET nom_bar = $1, 
+                        apell_bar = $2, 
+                        tel_bar = $3, 
+                        email = $4, 
+                        estado = $5
+                    WHERE id_bar = $6
+                `;
+                values = [nom_bar, apell_bar, tel_bar, email, estado, id];
+            }
+
+            const result = await db.query(query, values);
+
+            if (result.rowCount === 0) {
+                return res.status(404).json({ message: 'Barbero no encontrado' });
+            }
+
+            return res.status(200).json({ message: 'Datos actualizados correctamente' });
+
+        } catch (error: any) {
+            console.error("Error al actualizar:", error);
+            // Manejo de error de duplicados (ej: cambiar email a uno que ya existe)
+            if (error.code === '23505') { 
+                return res.status(409).json({ message: 'Ese correo electrónico ya está registrado por otro usuario.' });
+            }
+            return res.status(500).json({ message: 'Error interno del servidor' });
+        }
+    }
+
+    return res.status(405).json({ message: 'Método no permitido' });
 }
