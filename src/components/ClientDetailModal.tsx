@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styles from '@/styles/Modal.module.css';
-import { FaTimes, FaSave, FaUser, FaHistory, FaCut } from 'react-icons/fa';
+import { FaTimes, FaSave, FaUser, FaHistory, FaCut, FaCamera } from 'react-icons/fa';
 
 interface Props {
     clientId: number;
@@ -22,24 +22,64 @@ const ClientDetailModal: React.FC<Props> = ({ clientId, onClose, onUpdateSuccess
         nom_clie: '', apell_clie: '', tel_clie: '', email_clie: '', ocupacion: '', edad_clie: '', id_bar: ''
     });
 
+    // Estado para la nueva foto
+    const [previewFoto, setPreviewFoto] = useState<string | null>(null);
+    const [nuevaFotoBase64, setNuevaFotoBase64] = useState<string | null>(null);
+
+    // 1. HELPER: Convertir archivo a Base64
+    const fileToBase64 = (file: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = error => reject(error);
+        });
+    };
+
+    // 2. HELPER: Renderizar foto del server
+    const renderFotoServer = (fotoData: any) => {
+        if (!fotoData) return null;
+        if (fotoData.type === 'Buffer' && Array.isArray(fotoData.data)) {
+            const base64String = Buffer.from(fotoData.data).toString('base64');
+            return `data:image/jpeg;base64,${base64String}`;
+        }
+        if (typeof fotoData === 'string') return fotoData;
+        return null;
+    };
+
+    // 3. MANEJO DE CAMBIO DE FOTO
+    const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            if (file.size > 2 * 1024 * 1024) return alert("Imagen muy pesada (Máx 2MB)");
+            try {
+                const base64 = await fileToBase64(file);
+                setNuevaFotoBase64(base64); // Para enviar al backend
+                setPreviewFoto(base64);     // Para verla al instante
+            } catch (error) { console.error(error); }
+        }
+    };
+
     // Cargar datos al abrir
     useEffect(() => {
-        if (!clientId) return; // Seguridad extra
+        if (!clientId) return;
 
         const loadData = async () => {
             setLoading(true);
             try {
-                // 1. Cargar Cliente y Historial
                 const resCli = await fetch(`/api/clientes/${clientId}`);
                 if (!resCli.ok) throw new Error("Error al cargar cliente");
                 
                 const dataCli = await resCli.json();
                 
-                // Asignamos datos
                 setPerfil(dataCli.perfil);
-                setHistorial(dataCli.historial || []); // Array vacío si no hay historial
+                setHistorial(dataCli.historial || []);
                 
-                // Llenar formulario si existe el perfil
+                // Si trae foto del server, la mostramos en el preview
+                if (dataCli.perfil && dataCli.perfil.foto) {
+                    setPreviewFoto(renderFotoServer(dataCli.perfil.foto));
+                }
+                
                 if (dataCli.perfil) {
                     setFormData({
                         nom_clie: dataCli.perfil.nom_clie || '',
@@ -52,7 +92,6 @@ const ClientDetailModal: React.FC<Props> = ({ clientId, onClose, onUpdateSuccess
                     });
                 }
 
-                // 2. Cargar lista de Barberos
                 const resBar = await fetch('/api/personal');
                 if (resBar.ok) setBarberos(await resBar.json());
 
@@ -68,10 +107,16 @@ const ClientDetailModal: React.FC<Props> = ({ clientId, onClose, onUpdateSuccess
     const handleUpdate = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
+            // Preparamos el payload incluyendo la foto si cambió
+            const payload = {
+                ...formData,
+                foto: nuevaFotoBase64 // Si es null, el backend debe ignorarlo
+            };
+
             const res = await fetch(`/api/clientes/${clientId}`, {
                 method: 'PUT',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(formData)
+                body: JSON.stringify(payload)
             });
             if(res.ok) {
                 alert("✅ Perfil actualizado");
@@ -83,47 +128,42 @@ const ClientDetailModal: React.FC<Props> = ({ clientId, onClose, onUpdateSuccess
         } catch(e) { alert("Error de conexión"); }
     };
 
-    // 🛡️ BLOQUEOS DE SEGURIDAD (Esto evita el error que te salió)
-    if (loading) {
-        return (
-            <div className={styles.modalBackdrop}>
-                <div className={styles.modalContent} style={{color:'white', textAlign:'center'}}>
-                    Cargando perfil...
-                </div>
-            </div>
-        );
-    }
+    if (loading) return <div className={styles.modalBackdrop}><div className={styles.modalContent} style={{color:'white'}}>Cargando...</div></div>;
+    if (!perfil) return null;
 
-    // Si terminó de cargar pero NO encontró el perfil (ej. eliminado o error), no renderiza el HTML que falla
-    if (!perfil) {
-        return (
-            <div className={styles.modalBackdrop}>
-                <div className={styles.modalContent} style={{color:'white', textAlign:'center'}}>
-                    <p>⚠️ No se encontraron datos del cliente.</p>
-                    <button onClick={onClose} className={styles.closeButton} style={{position:'static', marginTop:10}}>Cerrar</button>
-                </div>
-            </div>
-        );
-    }
-
-    // RENDERIZADO SEGURO
     return (
         <div className={styles.modalBackdrop}>
             <div className={styles.modalContent} style={{maxWidth: '700px'}}>
                 
-                {/* HEADER CON FOTO */}
+                {/* HEADER CON FOTO EDITABLE */}
                 <div style={{display:'flex', gap: 20, alignItems:'center', borderBottom:'1px solid #444', paddingBottom: 20, marginBottom: 20}}>
-                    <div style={{width: 80, height: 80, borderRadius: '50%', overflow:'hidden', border: '3px solid var(--color-accent)', flexShrink: 0}}>
-                        {perfil.foto_base64 ? (
-                            <img src={`data:image/jpeg;base64,${perfil.foto_base64}`} style={{width:'100%', height:'100%', objectFit:'cover'}} alt="Perfil" />
-                        ) : (
-                            <div style={{width:'100%', height:'100%', background:'#333', display:'flex', alignItems:'center', justifyContent:'center'}}>
+                    
+                    {/* CÍRCULO DE FOTO */}
+                    <div style={{position:'relative'}}>
+                        <div style={{width: 80, height: 80, borderRadius: '50%', overflow:'hidden', border: '3px solid var(--color-accent)', flexShrink: 0, background:'#333', display:'flex', alignItems:'center', justifyContent:'center'}}>
+                            {previewFoto ? (
+                                <img src={previewFoto} style={{width:'100%', height:'100%', objectFit:'cover'}} alt="Perfil" />
+                            ) : (
                                 <FaUser size={30} color="#666"/>
-                            </div>
+                            )}
+                        </div>
+                        
+                        {/* Botón Flotante de Cámara (Solo visible en pestaña perfil) */}
+                        {activeTab === 'perfil' && (
+                            <label style={{
+                                position: 'absolute', bottom: -5, right: -5,
+                                background: 'var(--color-accent)', color: 'black',
+                                width: 30, height: 30, borderRadius: '50%',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                cursor: 'pointer', border: '2px solid #1a1a1a', zIndex: 10
+                            }}>
+                                <FaCamera size={14} />
+                                <input type="file" accept="image/*" onChange={handleImageChange} style={{display:'none'}} />
+                            </label>
                         )}
                     </div>
+
                     <div>
-                        {/* 🛡️ Usamos '?.' para seguridad extra, aunque el 'if(!perfil)' de arriba ya lo protege */}
                         <h2 style={{margin:0, color:'white'}}>{perfil?.nom_clie} {perfil?.apell_clie}</h2>
                         <span style={{color:'var(--color-accent)'}}>{perfil?.ocupacion || 'Cliente'}</span>
                     </div>
@@ -178,11 +218,10 @@ const ClientDetailModal: React.FC<Props> = ({ clientId, onClose, onUpdateSuccess
                                     <option key={b.id_bar} value={b.id_bar}>{b.nom_bar} {b.apell_bar}</option>
                                 ))}
                             </select>
-                            <small style={{color:'#888', marginTop: 5, display:'block'}}>Este cliente aparecerá en la cartera del barbero seleccionado.</small>
                         </div>
 
                         <div className={styles.formActions}>
-                            <button type="submit" className={styles.submitButton} style={{background: '#0D6EFD', width:'100%'}}>
+                            <button type="submit" className={styles.submitButton} style={{background: '#0D6EFD', width:'100%', display:'flex', justifyContent:'center', alignItems:'center', gap: 8}}>
                                 <FaSave /> Guardar Cambios
                             </button>
                         </div>

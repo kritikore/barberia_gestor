@@ -1,57 +1,43 @@
-// src/pages/citas.tsx
 import React, { useState, useEffect } from 'react';
 import { NextPage } from 'next';
 import Head from 'next/head';
-import { FaCalendarAlt, FaTrashAlt, FaEdit, FaPlus, FaCheck, FaTimes } from 'react-icons/fa'; 
-import AdminLayout from '@/components/AdminLayout';
+import { 
+    FaCalendarAlt, FaTrash, FaEdit, FaPlus, 
+    FaCheck, FaBan, FaDollarSign, FaUserTie, FaClock, FaUser, FaRegClock 
+} from 'react-icons/fa'; 
 import AddCitaModal from '@/components/AddCitaModal';
-import EditCitaModal from '@/components/EditCitaModal'; 
+import EditCitaModal from '@/components/EditCitaModal';
+import ReagendarModal from '@/components/ReagendarModal'; // 👈 IMPORTADO
 import styles from '@/styles/Servicios.module.css';
 
-interface Cita {
-    id_cita: number;
-    fecha: string;
-    hora: string;
-    estado: string;
-    observaciones: string;
-    nombre_cliente: string;
-    nombre_barbero: string;
-    nombre_servicio: string;
-    id_bar: number;
-    id_serv: number;
-    id_clie: number;
-}
-
 const CitasAdminPage: NextPage = () => {
-    const [citas, setCitas] = useState<Cita[]>([]);
+    const [citas, setCitas] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     
-    // Estados de Modales
-    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [editingCita, setEditingCita] = useState<Cita | null>(null);
+    const hoy = new Date().toLocaleDateString('en-CA'); 
+    const [fechaSeleccionada, setFechaSeleccionada] = useState(hoy);
 
-    // Cargar Citas
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [editingCita, setEditingCita] = useState<any | null>(null);
+    const [citaParaReagendar, setCitaParaReagendar] = useState<any | null>(null); // 👈 NUEVO
+
     const fetchData = async () => {
         setLoading(true);
         try {
             const res = await fetch('/api/citas');
             if (res.ok) {
                 const data = await res.json();
-                console.log("Datos recibidos en frontend:", data); // 🔍 Para depuración
-                setCitas(data);
+                const citasDelDia = data.filter((c: any) => c.fecha.substring(0, 10) === fechaSeleccionada);
+                setCitas(citasDelDia);
             }
-        } catch (error) { 
-            console.error(error); 
-        } finally { 
-            setLoading(false); 
-        }
+        } catch (error) { console.error(error); } 
+        finally { setLoading(false); }
     };
 
-    useEffect(() => { fetchData(); }, []);
+    useEffect(() => { fetchData(); }, [fechaSeleccionada]);
 
-    // Funciones de Acción
     const handleDelete = async (id: number) => {
-        if (!confirm("¿Deseas eliminar esta cita permanentemente?")) return;
+        if (!confirm("¿Deseas eliminar esta cita y liberar el horario?")) return;
         try {
             await fetch(`/api/citas/${id}`, { method: 'DELETE' });
             fetchData();
@@ -59,141 +45,134 @@ const CitasAdminPage: NextPage = () => {
     };
 
     const handleQuickStatus = async (id: number, nuevoEstado: string) => {
-        if (!confirm(`¿Cambiar estado a: ${nuevoEstado}?`)) return;
+        if (!confirm(`¿Marcar como ${nuevoEstado}?`)) return;
         try {
             await fetch(`/api/citas/${id}`, {
                 method: 'PUT',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ estado: nuevoEstado, observaciones: `Cambio rápido a ${nuevoEstado}` })
+                body: JSON.stringify({ estado: nuevoEstado })
             });
             fetchData();
         } catch(e) { alert("Error al actualizar"); }
     };
 
-    // Formateador de Fecha seguro
-    const formatDate = (dateString: string) => {
-        if (!dateString) return "Sin fecha";
-        const date = new Date(dateString);
-        return date.toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' });
+    const intervalos = [];
+    for (let hora = 9; hora <= 20; hora++) {
+        intervalos.push(`${hora < 10 ? '0'+hora : hora}:00`);
+        if (hora < 20) intervalos.push(`${hora < 10 ? '0'+hora : hora}:30`);
+    }
+
+    const getCitasEnHorario = (horario: string) => {
+        return citas.filter(c => c.hora.substring(0, 5) === horario);
     };
 
     return (
         <>
-            <Head><title>Agenda Global - Administración</title></Head>
+            <Head><title>Agenda Global</title></Head>
             
             {isAddModalOpen && <AddCitaModal onClose={() => setIsAddModalOpen(false)} onSuccess={fetchData} />}
+            {editingCita && <EditCitaModal cita={editingCita} onClose={() => setEditingCita(null)} onSuccess={fetchData} />}
             
-            {editingCita && (
-                <EditCitaModal 
-                    cita={editingCita} 
-                    onClose={() => setEditingCita(null)} 
+            {/* MODAL REAGENDAR */}
+            {citaParaReagendar && (
+                <ReagendarModal 
+                    cita={citaParaReagendar} 
+                    onClose={() => setCitaParaReagendar(null)} 
                     onSuccess={fetchData} 
                 />
             )}
-
+            
             <main> 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
-                    <h1>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: 15 }}>
+                    <h1 style={{margin:0, display:'flex', alignItems:'center'}}>
                         <FaCalendarAlt style={{ marginRight: '10px', color: 'var(--color-accent)' }} /> 
                         Agenda Global
                     </h1>
-                    <button 
-                        onClick={() => setIsAddModalOpen(true)} 
-                        style={{ 
-                            backgroundColor: 'var(--color-accent)', 
-                            color: 'black', 
-                            border: 'none', 
-                            padding: '10px 15px', 
-                            borderRadius: '6px', 
-                            cursor: 'pointer', 
-                            fontWeight: 'bold',
-                            display: 'flex', alignItems: 'center', gap: '8px'
-                        }}
-                    >
-                       <FaPlus /> Agendar Cita
-                    </button>
+                    <div style={{display:'flex', gap: 15, alignItems:'center'}}>
+                        <input type="date" value={fechaSeleccionada} onChange={(e) => setFechaSeleccionada(e.target.value)} style={{ background: '#222', color: 'white', border: '1px solid #444', padding: '10px', borderRadius: '8px', cursor: 'pointer' }} />
+                        <button onClick={() => setIsAddModalOpen(true)} style={{ backgroundColor: 'var(--color-accent)', color: 'black', border: 'none', padding: '10px 15px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <FaPlus /> Agendar
+                        </button>
+                    </div>
                 </div>
                 
-                <div className={styles.tableContainer}>
-                    <table className={styles.serviciosTable}>
-                        <thead>
-                            <tr>
-                                <th style={{color: 'white'}}>Fecha / Hora</th>
-                                <th style={{color: 'white'}}>Barbero</th>
-                                <th style={{color: 'white'}}>Cliente</th>
-                                <th style={{color: 'white'}}>Servicio</th>
-                                <th style={{color: 'white'}}>Estado</th>
-                                <th style={{textAlign: 'center', color: 'white'}}>Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {loading ? (
-                                <tr><td colSpan={6} style={{textAlign: 'center', padding: '20px', color: 'white'}}>Cargando agenda...</td></tr>
-                            ) : (
-                                citas.map((c) => (
-                                    <tr key={c.id_cita}>
-                                        {/* COLUMNA 1: FECHA Y HORA */}
-                                        <td>
-                                            <div style={{fontWeight: 'bold', color: 'white'}}>
-                                                {formatDate(c.fecha)}
-                                            </div>
-                                            <div style={{color: 'var(--color-primary)', fontSize: '0.9em', fontWeight: 'bold'}}>
-                                                {c.hora ? c.hora.substring(0,5) : '--:--'}
-                                            </div>
-                                        </td>
-                                        
-                                        {/* COLUMNA 2: BARBERO (Forzamos color blanco) */}
-                                        <td style={{color: '#ddd', fontSize: '1.05em'}}>
-                                            {c.nombre_barbero || 'Sin asignar'}
-                                        </td> 
-                                        
-                                        {/* COLUMNA 3: CLIENTE (Forzamos color blanco) */}
-                                        <td style={{color: '#ddd', fontSize: '1.05em'}}>
-                                            {c.nombre_cliente || 'Cliente Anónimo'}
-                                        </td>
+                <div style={{background: '#1a1a1a', borderRadius: '16px', padding: '20px', border: '1px solid #333'}}>
+                    {intervalos.map((horario) => {
+                        const citasEnSlot = getCitasEnHorario(horario);
+                        const esMediaHora = horario.includes(':30');
 
-                                        {/* COLUMNA 4: SERVICIO (Forzamos color blanco) */}
-                                        <td style={{color: '#ddd'}}>
-                                            {c.nombre_servicio || 'General'}
-                                        </td>
+                        return (
+                            <div key={horario} style={{ display: 'flex', borderBottom: '1px solid #333', minHeight: '80px', padding: '10px 0', backgroundColor: esMediaHora ? 'rgba(255,255,255,0.02)' : 'transparent' }}>
+                                <div style={{ width: '80px', borderRight: '1px solid #333', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: esMediaHora ? '#666' : '#aaa', fontWeight: esMediaHora ? 'normal' : 'bold' }}>
+                                    {horario}
+                                </div>
 
-                                        {/* COLUMNA 5: ESTADO */}
-                                        <td>
-                                            <span style={{
-                                                padding: '4px 10px', borderRadius: '12px', fontSize: '0.85em', fontWeight: 'bold',
-                                                backgroundColor: c.estado === 'Confirmada' ? '#28a745' : 
-                                                               (c.estado === 'Pendiente' ? '#ffc107' : 
-                                                               (c.estado === 'Cancelada' ? '#dc3545' : '#6c757d')),
-                                                color: c.estado === 'Pendiente' ? 'black' : 'white'
+                                <div style={{flex: 1, paddingLeft: '15px', display: 'flex', flexDirection: 'column', gap: '10px', justifyContent: 'center'}}>
+                                    {citasEnSlot.length > 0 ? (
+                                        citasEnSlot.map((cita) => (
+                                            <div key={cita.id_cita} style={{
+                                                background: cita.estado === 'Completada' ? 'rgba(40, 167, 69, 0.1)' : 
+                                                            cita.estado === 'No Asistió' ? 'rgba(220, 53, 69, 0.1)' : 'rgba(255, 193, 7, 0.1)', 
+                                                borderLeft: `4px solid ${cita.estado === 'Completada' ? '#28a745' : cita.estado === 'No Asistió' ? '#dc3545' : '#ffc107'}`,
+                                                width: '100%', padding: '10px 15px', borderRadius: '6px',
+                                                display: 'flex', justifyContent: 'space-between', alignItems: 'center'
                                             }}>
-                                                {c.estado}
-                                            </span>
-                                        </td>
+                                                <div>
+                                                    <div style={{fontWeight: 'bold', color: 'white', fontSize: '1.1em', marginBottom: 5, display:'flex', alignItems:'center', gap: 8}}>
+                                                        <FaUser size={12} color="#aaa"/> {cita.nombre_cliente}
+                                                    </div>
+                                                    <div style={{color: '#aaa', fontSize: '0.9em', display: 'flex', gap: 15, alignItems:'center'}}>
+                                                        <span style={{color: '#fff', fontWeight:'bold'}}>{cita.nombre_servicio}</span>
+                                                        <span style={{display:'flex', alignItems:'center', gap:5, background: '#333', padding:'3px 8px', borderRadius:4, border: '1px solid #444', color: '#ccc', fontSize: '0.9em'}}>
+                                                            <FaUserTie size={11} color="var(--color-accent)"/> Atiende: <strong>{cita.nombre_barbero}</strong>
+                                                        </span>
+                                                    </div>
+                                                </div>
 
-                                        {/* COLUMNA 6: ACCIONES */}
-                                        <td className={styles.actionCell} style={{justifyContent: 'center', gap: '10px'}}>
-                                            {c.estado === 'Confirmada' && (
-                                                <button className={styles.actionButton} style={{color: '#28a745', border: '1px solid #28a745'}} onClick={() => handleQuickStatus(c.id_cita, 'Completada')} title="Marcar Completada">
-                                                    <FaCheck />
-                                                </button>
-                                            )}
+                                                <div style={{textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5}}>
+                                                    <div style={{color: '#85ff9e', fontWeight: 'bold', fontSize: '1.1em', display: 'flex', alignItems: 'center'}}>
+                                                        <FaDollarSign size={14}/> {cita.precio || 0}
+                                                    </div>
 
-                                            <button className={styles.actionButton} style={{color: '#0D6EFD', border: '1px solid #0D6EFD'}} onClick={() => setEditingCita(c)} title="Editar Cita">
-                                                <FaEdit />
-                                            </button>
+                                                    <div style={{display:'flex', gap: 5, marginTop: 5}}>
+                                                        
+                                                        {/* BOTÓN REAGENDAR (NUEVO) */}
+                                                        <button onClick={() => setCitaParaReagendar(cita)} title="Reagendar" style={{background:'#0D6EFD', border:'none', color:'white', padding:'6px', borderRadius:'4px', cursor:'pointer'}}>
+                                                            <FaRegClock size={12}/>
+                                                        </button>
 
-                                            <button className={styles.actionButton} style={{color: '#dc3545', border: '1px solid #dc3545'}} onClick={() => handleDelete(c.id_cita)} title="Eliminar">
-                                                <FaTrashAlt />
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                            {!loading && citas.length === 0 && (
-                                <tr><td colSpan={6} style={{textAlign: 'center', padding: '30px', color: '#aaa'}}>No se encontraron citas.</td></tr>
-                            )}
-                        </tbody>
-                    </table>
+                                                        {/* BOTÓN EDITAR COMPLETO (Se mantiene por si acaso) */}
+                                                        <button onClick={() => setEditingCita(cita)} title="Editar Completo" style={{background:'#6610f2', border:'none', color:'white', padding:'6px', borderRadius:'4px', cursor:'pointer'}}>
+                                                            <FaEdit size={12}/>
+                                                        </button>
+
+                                                        <button onClick={() => handleDelete(cita.id_cita)} title="Eliminar" style={{background:'#333', border:'1px solid #555', color:'#aaa', padding:'6px', borderRadius:'4px', cursor:'pointer'}}>
+                                                            <FaTrash size={12}/>
+                                                        </button>
+
+                                                        {cita.estado === 'Pendiente' && (
+                                                            <>
+                                                                <button onClick={() => handleQuickStatus(cita.id_cita, 'No Asistió')} title="No Asistió" style={{background:'#dc3545', border:'none', color:'white', padding:'6px', borderRadius:'4px', cursor:'pointer'}}>
+                                                                    <FaBan size={12}/>
+                                                                </button>
+                                                                <button onClick={() => handleQuickStatus(cita.id_cita, 'Completada')} title="Completar" style={{background:'#28a745', border:'none', color:'white', padding:'6px', borderRadius:'4px', cursor:'pointer'}}>
+                                                                    <FaCheck size={12}/>
+                                                                </button>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div style={{color: '#444', fontStyle: 'italic', fontSize: '0.9em', border: '1px dashed #333', padding: '10px', borderRadius: '6px', textAlign:'center'}}>
+                                            -- Disponible --
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })}
                 </div>
             </main>
         </>

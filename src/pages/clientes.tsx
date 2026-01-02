@@ -1,15 +1,11 @@
-// src/pages/clientes.tsx
 import React, { useState, useEffect } from 'react';
 import { NextPage } from 'next';
 import Head from 'next/head';
-import { FaUsers, FaPlus, FaTrash, FaUser, FaEnvelope, FaPhone } from 'react-icons/fa';
-import AdminLayout from '@/components/AdminLayout';
-import AddClientModal from '@/components/ClientModal';
-import ClientDetailModal from '@/components/ClientDetailModal'; // 👈 Importamos el nuevo modal de detalle
-import styles from '@/styles/Servicios.module.css'; // 👈 Importamos los estilos para corregir el error
+import { FaUsers, FaPlus, FaTrash, FaUser, FaPhone, FaUserTie, FaPen } from 'react-icons/fa';
 import ClientModal from '@/components/ClientModal';
+import ClientDetailModal from '@/components/ClientDetailModal';
+import styles from '@/styles/Servicios.module.css';
 
-// Interfaz completa del Cliente
 interface Cliente {
     id_clie: number;
     nom_clie: string;
@@ -18,99 +14,61 @@ interface Cliente {
     email_clie: string;
     ocupacion: string;
     edad_clie: number;
-    foto_base64?: string;
-    nombre_barbero?: string; // Para saber quién lo atiende
+    foto?: any;
+    nom_bar?: string;
+    apell_bar?: string;
 }
 
 const ClientesPage: NextPage = () => {
-    // Estados
     const [clientes, setClientes] = useState<Cliente[]>([]);
     const [loading, setLoading] = useState(true);
-    
-    // Estados para Modales
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [selectedClientId, setSelectedClientId] = useState<number | null>(null); // 👈 Controla qué cliente se está viendo en detalle
+    const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
 
-    // 1. Función para Cargar Clientes (Esto corrige el error "fetchClientes not found")
     const fetchClientes = async () => {
         setLoading(true);
         try {
             const res = await fetch('/api/clientes');
-            if (res.ok) {
-                const data = await res.json();
-                setClientes(data);
-            }
-        } catch (error) {
-            console.error(error);
-        } finally {
-            setLoading(false);
-        }
+            if (res.ok) setClientes(await res.json());
+        } catch (error) { console.error(error); } 
+        finally { setLoading(false); }
     };
 
-    // Cargar al iniciar
-    useEffect(() => {
-        fetchClientes();
-    }, []);
+    useEffect(() => { fetchClientes(); }, []);
 
-    // Función para Eliminar Cliente
-    const handleDelete = async (e: React.MouseEvent, id: number) => {
-        e.stopPropagation(); // Evita que se abra el modal de detalle al dar click en borrar
-        if (!confirm("¿Estás seguro de eliminar este cliente?")) return;
+    const renderFoto = (fotoData: any) => {
+        if (!fotoData) return null;
+        if (fotoData.type === 'Buffer' && Array.isArray(fotoData.data)) {
+            const base64String = Buffer.from(fotoData.data).toString('base64');
+            return `data:image/jpeg;base64,${base64String}`;
+        }
+        if (typeof fotoData === 'string') return fotoData;
+        return null;
+    };
+
+    const handleDelete = async (id: number) => {
+        if (!confirm("¿Estás seguro de eliminar este cliente permanentemente?")) return;
         try {
             const res = await fetch(`/api/clientes/${id}`, { method: 'DELETE' });
-            if (res.ok) {
-                alert("Cliente eliminado");
-                fetchClientes();
-            } else {
-                alert("Error al eliminar");
-            }
-        } catch (error) {
-            console.error(error);
-        }
+            if (res.ok) fetchClientes();
+            else alert("Error al eliminar");
+        } catch (error) { console.error(error); }
     };
 
     return (
         <>
-            <Head><title>Cartera de Clientes</title></Head>
+            <Head><title>Cartera Global</title></Head>
 
-            {/* Modal para AGREGAR Nuevo Cliente */}
-            {isAddModalOpen && (
-                <ClientModal 
-                    onClose={() => setIsAddModalOpen(false)} 
-                    onSuccess={fetchClientes} 
-                />
-            )}
-
-            {/* Modal para VER DETALLE / EDITAR / HISTORIAL */}
-            {selectedClientId && (
-                <ClientDetailModal 
-                    clientId={selectedClientId}
-                    onClose={() => setSelectedClientId(null)}
-                    onUpdateSuccess={fetchClientes} // Al editar, recarga la lista
-                />
-            )}
+            {isAddModalOpen && <ClientModal onClose={() => setIsAddModalOpen(false)} onSuccess={fetchClientes} />}
+            {selectedClientId && <ClientDetailModal clientId={selectedClientId} onClose={() => setSelectedClientId(null)} onUpdateSuccess={fetchClientes} />}
 
             <main>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
-                    <h1>
-                        <FaUsers style={{ marginRight: '10px', color: 'var(--color-accent)' }} /> 
-                        Cartera de Clientes
+                    <h1 style={{margin:0, display:'flex', alignItems:'center'}}>
+                        <FaUsers style={{ marginRight: '10px', color: 'var(--color-accent)' }} /> Cartera Global
                     </h1>
-                    <button 
-                        onClick={() => setIsAddModalOpen(true)} 
-                        style={{ 
-                            backgroundColor: 'var(--color-accent)', 
-                            color: 'black', 
-                            border: 'none', 
-                            padding: '10px 20px', 
-                            borderRadius: '8px', 
-                            cursor: 'pointer', 
-                            fontWeight: 'bold',
-                            display: 'flex', alignItems: 'center', gap: '8px',
-                            fontSize: '1rem'
-                        }}
-                    >
-                       <FaPlus /> Nuevo Cliente
+                    <button onClick={() => setIsAddModalOpen(true)} style={{ backgroundColor: 'var(--color-accent)', color: 'black', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <FaPlus /> Nuevo Cliente
                     </button>
                 </div>
 
@@ -118,105 +76,56 @@ const ClientesPage: NextPage = () => {
                     <table className={styles.serviciosTable}>
                         <thead>
                             <tr>
-                                <th style={{width: '80px', textAlign: 'center'}}>Foto</th>
-                                <th>Nombre Completo</th>
+                                <th style={{width: '60px'}}></th>
+                                <th>Nombre</th>
                                 <th>Teléfono</th>
-                                <th>Cartera de</th> {/* Nueva Columna */}
-                                <th>Ocupación</th>
+                                <th>Cartera de</th>
                                 <th style={{textAlign: 'center'}}>Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {loading ? (
-                                <tr><td colSpan={6} style={{textAlign: 'center', padding: '30px', color: '#aaa'}}>Cargando clientes...</td></tr>
-                            ) : (
-                                clientes.map((cliente) => (
-                                    <tr 
-                                        key={cliente.id_clie}
-                                        onClick={() => setSelectedClientId(cliente.id_clie)} // 👈 AQUÍ SE ABRE EL SUPER PERFIL
-                                        style={{cursor: 'pointer', transition: 'background 0.2s'}}
-                                        className="hover:bg-gray-800" // Clase opcional si usas tailwind, si no el CSS module lo maneja
-                                    >
-                                        
-                                        {/* FOTO */}
-                                        <td style={{textAlign: 'center'}}>
-                                            {cliente.foto_base64 ? (
-                                                <img 
-                                                    src={`data:image/jpeg;base64,${cliente.foto_base64}`} 
-                                                    alt="Avatar" 
-                                                    style={{
-                                                        width: '45px', 
-                                                        height: '45px', 
-                                                        borderRadius: '50%', 
-                                                        objectFit: 'cover', 
-                                                        border: '2px solid var(--color-accent)'
-                                                    }}
-                                                />
-                                            ) : (
-                                                <div style={{
-                                                    width: '45px', 
-                                                    height: '45px', 
-                                                    borderRadius: '50%', 
-                                                    backgroundColor: '#333', 
-                                                    display: 'flex', 
-                                                    alignItems: 'center', 
-                                                    justifyContent: 'center',
-                                                    margin: '0 auto',
-                                                    border: '1px solid #555'
-                                                }}>
-                                                    <FaUser size={20} color="#666" />
+                            {clientes.map((cli) => {
+                                const avatarSrc = renderFoto(cli.foto);
+                                return (
+                                    <tr key={cli.id_clie}>
+                                        <td onClick={() => setSelectedClientId(cli.id_clie)} style={{cursor:'pointer'}}>
+                                            <div style={{width: '40px', height: '40px', borderRadius: '50%', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#333', border: '2px solid var(--color-accent)'}}>
+                                                {avatarSrc ? <img src={avatarSrc} style={{width: '100%', height: '100%', objectFit: 'cover'}} /> : <FaUser size={20} color="#666" />}
+                                            </div>
+                                        </td>
+                                        <td style={{fontWeight:'bold', color:'white'}}>{cli.nom_clie} {cli.apell_clie}</td>
+                                        <td style={{color:'#ccc'}}><FaPhone size={12} style={{marginRight:5}}/>{cli.tel_clie}</td>
+                                        <td>
+                                            {cli.nom_bar ? (
+                                                <div style={{display:'flex', alignItems:'center', gap:5, background:'rgba(13, 110, 253, 0.2)', padding:'4px 8px', borderRadius:'12px', width:'fit-content', border:'1px solid rgba(13, 110, 253, 0.4)'}}>
+                                                    <FaUserTie size={12} color="#0d6efd"/>
+                                                    <span style={{color:'#6ea8fe', fontSize:'0.85em'}}>{cli.nom_bar}</span>
                                                 </div>
-                                            )}
+                                            ) : <span style={{color:'#555', fontStyle:'italic'}}>Sin asignar</span>}
                                         </td>
-
-                                        {/* Nombre */}
+                                        
+                                        {/* ACCIONES ADMIN: EDITAR | ELIMINAR */}
                                         <td>
-                                            <div style={{fontWeight: 'bold', color: 'white', fontSize: '1.05em'}}>
-                                                {cliente.nom_clie} {cliente.apell_clie}
+                                            <div style={{display:'flex', gap:'8px', justifyContent:'center'}}>
+                                                <button 
+                                                    onClick={() => setSelectedClientId(cli.id_clie)}
+                                                    title="Ver/Editar"
+                                                    style={{background: '#0D6EFD', border: 'none', borderRadius: '6px', padding: '8px', color: 'white', cursor: 'pointer'}}
+                                                >
+                                                    <FaPen />
+                                                </button>
+                                                <button 
+                                                    onClick={() => handleDelete(cli.id_clie)}
+                                                    title="Eliminar"
+                                                    style={{background: '#dc3545', border: 'none', borderRadius: '6px', padding: '8px', color: 'white', cursor: 'pointer'}}
+                                                >
+                                                    <FaTrash />
+                                                </button>
                                             </div>
-                                        </td>
-
-                                        {/* Teléfono */}
-                                        <td>
-                                            <div style={{display:'flex', alignItems:'center', gap:8, color: '#ccc'}}>
-                                                <FaPhone size={12} color="var(--color-accent)"/>
-                                                {cliente.tel_clie}
-                                            </div>
-                                        </td>
-
-                                       {/* Barbero Asignado (Cartera) */}
-                                        <td style={{ color: cliente.nombre_barbero ? 'white' : '#888' }}>
-                                            {cliente.nombre_barbero ? (
-                                                <span style={{background:'#0D6EFD', color:'white', padding:'2px 8px', borderRadius:'10px', fontSize:'0.8em'}}>
-                                                    {cliente.nombre_barbero}
-                                                </span>
-                                            ) : (
-                                                <span style={{color: '#888', fontStyle: 'italic'}}>Sin asignar</span>
-                                            )}
-                                        </td> 
-
-                                        {/* Ocupación */}
-                                        <td style={{color: '#aaa'}}>
-                                            {cliente.ocupacion || '-'}
-                                        </td>
-
-                                        {/* Acciones */}
-                                        <td className={styles.actionCell}>
-                                            <button 
-                                                className={styles.actionButton} 
-                                                style={{color: '#dc3545', border: '1px solid #dc3545'}} 
-                                                onClick={(e) => handleDelete(e, cliente.id_clie)} 
-                                                title="Eliminar Cliente"
-                                            >
-                                                <FaTrash />
-                                            </button>
                                         </td>
                                     </tr>
-                                ))
-                            )}
-                            {!loading && clientes.length === 0 && (
-                                <tr><td colSpan={6} style={{textAlign: 'center', padding: '40px', color: '#666'}}>No hay clientes registrados.</td></tr>
-                            )}
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div>

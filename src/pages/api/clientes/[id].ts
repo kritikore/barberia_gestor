@@ -1,90 +1,141 @@
-// src/pages/api/clientes/[id].ts
 import { NextApiRequest, NextApiResponse } from 'next';
 import { db } from '@/lib/db';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     const { id } = req.query;
 
-    // GET: OBTENER PERFIL + HISTORIAL
+    if (!id) {
+        return res.status(400).json({ message: 'ID de cliente requerido' });
+    }
+
+    // ==========================================
+    // 1. OBTENER UN CLIENTE (GET) - Para el detalle
+    // ==========================================
     if (req.method === 'GET') {
         try {
-            // 1. Datos del Cliente
-            const clienteRes = await db.query(`
-                SELECT *, encode(foto, 'base64') as foto_base64 
-                FROM cliente 
-                WHERE id_clie = $1
-            `, [id]);
-            
-            if (clienteRes.rows.length === 0) {
+            // Buscamos datos del perfil
+            const perfilQuery = `
+                SELECT c.*, b.nom_bar, b.apell_bar 
+                FROM cliente c
+                LEFT JOIN barber b ON c.id_bar = b.id_bar
+                WHERE c.id_clie = $1
+            `;
+            const perfilRes = await db.query(perfilQuery, [id]);
+
+            if (perfilRes.rows.length === 0) {
                 return res.status(404).json({ message: 'Cliente no encontrado' });
             }
 
-            // 2. Historial de Cortes (CORREGIDO: Usamos la tabla 'cita')
-            // Buscamos en 'cita' las que estén Completadas o Confirmadas
-            const historialRes = await db.query(`
-                SELECT 
-                    c.fecha, 
-                    s.precio as total, -- Asumimos que el servicio tiene precio
-                    s.tipo as servicio, 
-                    b.nom_bar 
+            // Buscamos historial de citas/servicios
+            const historialQuery = `
+                SELECT c.fecha, s.tipo as servicio, b.nom_bar, v.total
                 FROM cita c
-                JOIN servicio s ON c.id_serv = s.id_serv
+                LEFT JOIN servicio s ON c.id_serv = s.id_serv
                 LEFT JOIN barber b ON c.id_bar = b.id_bar
-                WHERE c.id_clie = $1 
-                -- Opcional: Descomenta la siguiente línea si solo quieres ver las completadas
-                -- AND c.estado = 'Completada' 
+                LEFT JOIN venta v ON v.id_bar = c.id_bar -- Esto es un ejemplo, ajusta según tu relación real de historial
+                WHERE c.id_clie = $1
                 ORDER BY c.fecha DESC
                 LIMIT 10
-            `, [id]);
+            `;
+            const historialRes = await db.query(historialQuery, [id]);
 
-            res.status(200).json({
-                perfil: clienteRes.rows[0],
+            return res.status(200).json({
+                perfil: perfilRes.rows[0],
                 historial: historialRes.rows
             });
+
         } catch (error: any) {
-            console.error("Error al cargar perfil:", error.message);
-            res.status(500).json({ message: 'Error al cargar perfil' });
-        }
-    }
-
-    // PUT: EDITAR CLIENTE
-    if (req.method === 'PUT') {
-        const { nom_clie, apell_clie, tel_clie, email_clie, ocupacion, edad_clie, id_bar } = req.body;
-        try {
-            await db.query(`
-                UPDATE cliente 
-                SET nom_clie=$1, apell_clie=$2, tel_clie=$3, email_clie=$4, ocupacion=$5, edad_clie=$6, id_bar=$7
-                WHERE id_clie=$8
-            `, [nom_clie, apell_clie, tel_clie, email_clie, ocupacion, Number(edad_clie), id_bar ? Number(id_bar) : null, id]);
-            
-            res.status(200).json({ message: 'Perfil actualizado' });
-        } catch (error) {
             console.error(error);
-            res.status(500).json({ message: 'Error al actualizar' });
+            return res.status(500).json({ message: 'Error al obtener cliente' });
         }
     }
 
-    // DELETE: ELIMINAR CLIENTE (CORREGIDO)
-   if (req.method === 'DELETE') {
+    // ==========================================
+    // 2. ACTUALIZAR CLIENTE (PUT) - AQUÍ ESTABA EL PROBLEMA
+    // ==========================================
+    if (req.method === 'PUT') {
         try {
-            // PASO 1: Eliminar historial de servicios antiguos (Donde te daba el error)
-            await db.query('DELETE FROM servicio_realizado WHERE id_clie = $1', [id]);
+            const { 
+                nom_clie, apell_clie, tel_clie, email_clie, 
+                ocupacion, edad_clie, id_bar, foto 
+            } = req.body;
 
-            // PASO 2: Eliminar citas agendadas
+            // PREPARACIÓN DE LA FOTO
+            let fotoBuffer: Buffer | null = null;
+            let hayNuevaFoto = false;
+
+            // Solo procesamos si viene un string Base64 válido (que indica cambio)
+            if (foto && typeof foto === 'string' && foto.startsWith('data:image')) {
+                const matches = foto.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+                if (matches && matches.length === 3) {
+                    fotoBuffer = Buffer.from(matches[2], 'base64');
+                    hayNuevaFoto = true;
+                }
+            }
+
+            // CASO A: SI HAY FOTO NUEVA -> Actualizamos TODO
+            if (hayNuevaFoto) {
+                await db.query(`
+                    UPDATE cliente SET
+                        nom_clie = $1,
+                        apell_clie = $2,
+                        tel_clie = $3,
+                        email_clie = $4,
+                        ocupacion = $5,
+                        edad_clie = $6,
+                        id_bar = $7,
+                        foto = $8  -- 👈 Aquí actualizamos la foto
+                    WHERE id_clie = $9
+                `, [
+                    nom_clie, apell_clie, tel_clie, email_clie, 
+                    ocupacion, parseInt(edad_clie), id_bar ? parseInt(id_bar) : null, 
+                    fotoBuffer, // Binario nuevo
+                    id
+                ]);
+            } 
+            // CASO B: NO HAY FOTO NUEVA -> Actualizamos SOLO TEXTO (Respetamos foto vieja)
+            else {
+                await db.query(`
+                    UPDATE cliente SET
+                        nom_clie = $1,
+                        apell_clie = $2,
+                        tel_clie = $3,
+                        email_clie = $4,
+                        ocupacion = $5,
+                        edad_clie = $6,
+                        id_bar = $7
+                        -- 🚫 NO TOCAMOS LA COLUMNA FOTO
+                    WHERE id_clie = $8
+                `, [
+                    nom_clie, apell_clie, tel_clie, email_clie, 
+                    ocupacion, parseInt(edad_clie), id_bar ? parseInt(id_bar) : null,
+                    id
+                ]);
+            }
+
+            return res.status(200).json({ message: 'Cliente actualizado correctamente' });
+
+        } catch (error: any) {
+            console.error("Error al actualizar:", error);
+            return res.status(500).json({ message: 'Error interno al actualizar' });
+        }
+    }
+
+    // ==========================================
+    // 3. ELIMINAR CLIENTE (DELETE)
+    // ==========================================
+    if (req.method === 'DELETE') {
+        try {
+            // Opcional: Borrar citas primero si tienes Foreign Keys estrictas
             await db.query('DELETE FROM cita WHERE id_clie = $1', [id]);
-
-            // PASO 3: (Opcional) Si tienes ventas asociadas al cliente, descomenta esto:
-            // await db.query('DELETE FROM venta WHERE id_clie = $1', [id]);
-
-            // PASO 4: Ahora sí, eliminar al cliente (Ya no tiene ataduras)
             await db.query('DELETE FROM cliente WHERE id_clie = $1', [id]);
             
-            res.status(200).json({ message: 'Cliente y todo su historial eliminados' });
-        } catch (error: any) {
-            console.error("Error al eliminar:", error.message);
-            // Si sigue fallando por otra tabla, el mensaje nos dirá cuál es
-            res.status(500).json({ message: 'Error al eliminar: ' + error.message });
+            return res.status(200).json({ message: 'Cliente eliminado' });
+        } catch (error) {
+            console.error(error);
+            return res.status(500).json({ message: 'Error al eliminar cliente' });
         }
     }
 
+    return res.status(405).json({ message: 'Método no permitido' });
 }
