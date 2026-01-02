@@ -18,21 +18,25 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
     // 🔑 FUNCIÓN DE LOGOUT (Esta es la que faltaba o no se pasaba)
     const handleLogout = async () => {
+    if(confirm("¿Cerrar sesión?")) {
         try {
-            // 1. Llamar a la API para limpiar cookie (si existe)
+            // 1. Limpieza en backend
             await fetch('/api/auth/logout', { method: 'POST' });
             
-            // 2. Redirigir al usuario a la pantalla de Login
-            console.log("Cerrando sesión...");
-            router.push('/login');
-            
-        } catch (error) {
-            console.error("Error al cerrar sesión:", error);
-            // Forzamos la salida aunque falle la API
-            router.push('/login');
-        }
-    };
+            // 2. Limpieza de storage manual por seguridad
+            localStorage.removeItem('usuario_activo');
+            localStorage.clear();
 
+            // 3. REDIRECCIÓN FORZADA (Solución al bloqueo)
+            // Usamos window.location en lugar de router.push
+            window.location.href = '/login';
+            
+        } catch (e) {
+            // En caso de error, también forzamos la salida limpia
+            window.location.href = '/login';
+        }
+    }
+  };
     // Clase para empujar el contenido
     const mainClasses = `${styles.contentShift} ${isSidebarExpanded ? styles.isExpanded : ''}`;
 

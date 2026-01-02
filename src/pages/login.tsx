@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NextPage } from 'next';
 import Head from 'next/head';
 import Link from 'next/link';
@@ -11,18 +11,36 @@ interface LoginFormState {
   password: string;
 }
 
-// Definición del componente
 const LoginPage: NextPage = () => {
   const router = useRouter();
 
+  // Declaramos los estados primero
   const [formState, setFormState] = useState<LoginFormState>({
     email: '',
     password: '',
   });
-  
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // ✅ Efecto corregido para usar los nombres de tus variables actuales
+ useEffect(() => {
+    // Usamos un pequeño delay para asegurar que el navegador de Electron 
+    // procese el cambio de estado después de la navegación
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+      setFormState({
+        email: '',
+        password: '',
+      });
+      setError(null);
+    }, 50);
+
+    localStorage.removeItem('user_session'); 
+    localStorage.removeItem('usuario_activo');
+
+    return () => clearTimeout(timer); // Limpieza del timer
+  }, []);
+  
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormState(prevState => ({
       ...prevState,
@@ -32,31 +50,27 @@ const LoginPage: NextPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError(null);
     setIsLoading(true);
 
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        // CORRECCIÓN IMPORTANTE: Se envía formState, no FormData
         body: JSON.stringify(formState) 
       });
 
       const data = await res.json();
 
       if (res.ok) {
-        console.log("Login exitoso, datos recibidos:", data.user); // 🔍 DEBUG
+        console.log("Login exitoso, datos recibidos:", data.user);
 
-        // 1. Guardamos en localStorage
         localStorage.setItem('usuario_activo', JSON.stringify(data.user));
 
-        // 2. Verificamos que se guardó correctamente antes de redirigir
         const guardado = localStorage.getItem('usuario_activo');
 
         if (guardado) {
           console.log("Sesión guardada correctamente. Redirigiendo...");
-          // Pequeña pausa de seguridad de 100ms
           setTimeout(() => {
             if (data.user.role === 'admin') {
               router.push('/dashboard');
@@ -97,10 +111,11 @@ const LoginPage: NextPage = () => {
               className={styles.loginInput}
               id="email"
               name="email"
-              type="text" // Cambiado a text para aceptar user o email
+              type="text" 
               placeholder="dev@gestor.com"
               value={formState.email}
               onChange={handleChange}
+              disabled={isLoading} // Bloquea mientras carga
               required
             />
           </div>
@@ -114,6 +129,7 @@ const LoginPage: NextPage = () => {
               placeholder="••••••••"
               value={formState.password}
               onChange={handleChange}
+              disabled={isLoading} // Bloquea mientras carga
               required
             />
           </div>
@@ -129,7 +145,6 @@ const LoginPage: NextPage = () => {
           </button>
         </form>
         
-        {/* Enlace a la página de registro */}
         <div style={{ marginTop: '25px', textAlign: 'center', color: 'var(--color-label)' }}>
             <p>
                 ¿OLVIDASTE TU CONTRASEÑA?{' '}

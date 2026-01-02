@@ -55,5 +55,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     } catch (error: any) {
         console.error("Error en API de Login:", error);
         res.status(500).json({ message: 'Error interno del servidor' });
+        return res.status(500).json({ message: "Error interno", detail: error.message });
     }
 }

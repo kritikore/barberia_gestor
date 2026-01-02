@@ -11,15 +11,23 @@ interface BarberLayoutProps {
 const BarberLayout: React.FC<BarberLayoutProps> = ({ children }) => {
   const router = useRouter();
 
-  const handleLogout = async () => {
+const handleLogout = async () => {
     if(confirm("¿Cerrar sesión?")) {
         try {
-            // Limpieza opcional en backend
+            // 1. Limpieza en backend
             await fetch('/api/auth/logout', { method: 'POST' });
-            // Redirección
-            router.push('/login');
+            
+            // 2. Limpieza de storage manual por seguridad
+            localStorage.removeItem('usuario_activo');
+            localStorage.clear();
+
+            // 3. REDIRECCIÓN FORZADA (Solución al bloqueo)
+            // Usamos window.location en lugar de router.push
+            window.location.href = '/login';
+            
         } catch (e) {
-            router.push('/login');
+            // En caso de error, también forzamos la salida limpia
+            window.location.href = '/login';
         }
     }
   };

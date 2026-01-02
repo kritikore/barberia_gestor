@@ -85,13 +85,21 @@ const ConfiguracionPage: NextPage = () => {
         }
     };
 
-    const handleLogout = () => {
-        if(confirm("¿Cerrar sesión del sistema?")) {
-            localStorage.removeItem('usuario_activo');
-            router.push('/');
-        }
-    };
+const handleLogout = () => {
+    if(confirm("¿Cerrar sesión del sistema?")) {
+        // 1. Limpiamos los datos de sesión
+        localStorage.removeItem('usuario_activo');
+        
+        // Opcional: Limpiar todo el almacenamiento para mayor seguridad
+        localStorage.clear();
 
+        // 2. REDIRECCIÓN FORZADA (Solución definitiva al bloqueo)
+        // Cambiamos router.push('/') por window.location.href
+        // Esto reinicia el estado de React y desbloquea los inputs
+        window.location.href = '/';
+    }
+  };
+  
     return (
         <>
             <Head><title>Configuración | Admin</title></Head>
