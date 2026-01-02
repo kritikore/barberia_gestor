@@ -230,7 +230,7 @@ const DashboardPage: NextPage = () => {
                                     <YAxis stroke="#9CA3AF" style={{fontSize:'0.8rem'}} tickFormatter={(value) => `$${value}`}/>
                                     <Tooltip 
                                         contentStyle={{backgroundColor: '#111827', border: '1px solid #374151', borderRadius: '8px', color:'white'}}
-                                        formatter={(value: number) => [`$${value}`, '']}
+                                        formatter={(value: any) => [`$${value}`, "Ventas"]}
                                     />
                                     <Legend />
                                     {/* Barras para Servicios (Base sólida) */}
