@@ -2,9 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { NextPage } from 'next';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { FaUserTie, FaPlus, FaTrash, FaEye, FaEdit } from 'react-icons/fa';
-import AdminLayout from '@/components/AdminLayout';
-import BarberModal from '@/components/BarberModal'; // Importamos el modal
+import { FaUserTie, FaPlus, FaTrash, FaEye, FaEdit, FaUserSlash, FaCheckCircle } from 'react-icons/fa';
+import BarberModal from '@/components/BarberModal'; 
 import styles from '@/styles/Servicios.module.css';
 
 interface Barbero {
@@ -13,7 +12,7 @@ interface Barbero {
     apell_bar: string;
     tel_bar: string;
     email: string;
-    estado: string | boolean; // Manejo flexible del tipo de dato
+    estado: string; // 'Activo' o 'Inactivo'
 }
 
 const PersonalPage: NextPage = () => {
@@ -21,67 +20,54 @@ const PersonalPage: NextPage = () => {
     const [personal, setPersonal] = useState<Barbero[]>([]);
     const [loading, setLoading] = useState(true);
 
-    // Estados para el Modal
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedBarbero, setSelectedBarbero] = useState<Barbero | null>(null);
 
     const fetchPersonal = async () => {
+        setLoading(true);
         try {
             const res = await fetch('/api/personal');
-            if (res.ok) {
-                const data = await res.json();
-                setPersonal(data);
-            }
+            if (res.ok) setPersonal(await res.json());
         } catch (error) { console.error(error); } 
         finally { setLoading(false); }
     };
 
     useEffect(() => { fetchPersonal(); }, []);
 
-    // Abrir modal para CREAR
     const handleCreate = () => {
         setSelectedBarbero(null);
         setIsModalOpen(true);
     };
 
-    // Abrir modal para EDITAR
     const handleEdit = (barbero: Barbero) => {
         setSelectedBarbero(barbero);
         setIsModalOpen(true);
     };
 
-    // Helper para determinar si está activo (Manejo robusto de estado)
-    const isActivo = (estado: any) => {
-        if (estado === true) return true;
-        if (typeof estado === 'string' && estado.toLowerCase() === 'activo') return true;
-        return false;
-    };
-
-    // --- LÓGICA DE ELIMINACIÓN INTELIGENTE ---
+    // LÓGICA INTELIGENTE DE BAJA
     const handleDelete = async (barbero: Barbero) => {
-      // Mensaje único y claro
-        const mensaje = `¿Estás seguro de eliminar a ${barbero.nom_bar}?\n\nSi tiene ventas registradas, el sistema conservará los datos contables pero el barbero desaparecerá de esta lista definitivamente.`;
-
+        const mensaje = `¿Gestionar baja de ${barbero.nom_bar}?\n\nSi tiene historial, pasará a INACTIVO para no perder datos contables.\nSi es nuevo, se eliminará permanentemente.`;
+        
         if (!confirm(mensaje)) return;
         
         try {
-            const response = await fetch(`/api/personal/${barbero.id_bar}`, { method: 'DELETE' });
-            const data = await response.json();
-
-            if (response.ok) {
-                alert(`✅ ${data.message}`);
-                fetchPersonal(); // Se recarga la lista y el 'Eliminado' ya no aparecerá
+            const res = await fetch(`/api/personal/${barbero.id_bar}`, { method: 'DELETE' });
+            const data = await res.json();
+            
+            if (res.ok) {
+                alert("✅ " + data.message);
+                fetchPersonal(); 
             } else {
-                alert(`⚠️ ${data.message}`);
+                alert("⚠️ " + data.message);
             }
-        } catch (error) { alert("Error de conexión."); }
+        } catch (error) { alert("Error de conexión"); }
     };
 
     return (
         <>
             <Head><title>Gestión de Personal</title></Head>
 
-            {/* MODAL INTEGRADO PARA CREAR/EDITAR */}
+            {/* Modal para Crear/Editar */}
             <BarberModal 
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
@@ -91,9 +77,10 @@ const PersonalPage: NextPage = () => {
 
             <main>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
-                    <h1><FaUserTie style={{ marginRight: '10px', color: 'var(--color-accent)' }} /> Equipo de Barberos</h1>
-                    
-                    {/* Botón Nuevo Barbero */}
+                    <h1 style={{margin:0, display:'flex', alignItems:'center'}}>
+                        <FaUserTie style={{ marginRight: '10px', color: 'var(--color-accent)' }} /> 
+                        Equipo de Barberos
+                    </h1>
                     <button 
                         onClick={handleCreate} 
                         style={{ backgroundColor: 'var(--color-accent)', color: 'black', border: 'none', padding: '10px 15px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 5 }}
@@ -106,60 +93,78 @@ const PersonalPage: NextPage = () => {
                     <table className={styles.serviciosTable}>
                         <thead>
                             <tr>
-                                <th>Nombre</th>
-                                <th>Email</th>
+                                <th>Nombre Completo</th>
+                                <th>Contacto / Email</th>
                                 <th>Estado</th>
                                 <th style={{textAlign: 'center'}}>Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
                             {loading ? (
-                                <tr><td colSpan={4} style={{textAlign: 'center', padding: 20}}>Cargando equipo...</td></tr>
+                                <tr><td colSpan={4} style={{textAlign: 'center', padding: 20, color:'white'}}>Cargando equipo...</td></tr>
                             ) : (
                                 personal.map((p) => {
-                                    const activo = isActivo(p.estado);
+                                    const esActivo = p.estado === 'Activo';
                                     return (
-                                        <tr key={p.id_bar} style={{ opacity: activo ? 1 : 0.75, backgroundColor: activo ? 'transparent' : 'rgba(0,0,0,0.2)' }}>
-                                            <td style={{fontWeight: 'bold', color: 'white'}}>{p.nom_bar} {p.apell_bar}</td>
-                                            <td>{p.email}</td>
+                                        <tr key={p.id_bar} style={{ opacity: esActivo ? 1 : 0.6, background: esActivo ? 'transparent' : 'rgba(0,0,0,0.3)' }}>
+                                            
+                                            {/* NOMBRE */}
+                                            <td style={{fontWeight: 'bold', color: 'white', fontSize:'1.1em'}}>
+                                                {p.nom_bar} {p.apell_bar}
+                                            </td>
+
+                                            {/* CONTACTO */}
+                                            <td style={{color: '#ccc'}}>
+                                                <div>{p.email}</div>
+                                                <div style={{fontSize:'0.85em', color:'#888'}}>{p.tel_bar}</div>
+                                            </td>
+
+                                            {/* ESTADO */}
                                             <td>
                                                 <span style={{ 
-                                                    padding: '4px 8px', borderRadius: '4px', fontSize: '0.85em', 
-                                                    backgroundColor: activo ? 'rgba(40, 167, 69, 0.2)' : 'rgba(108, 117, 125, 0.2)', 
-                                                    color: activo ? '#28a745' : '#aaa', 
-                                                    border: activo ? '1px solid #28a745' : '1px solid #666',
-                                                    fontWeight: 'bold'
+                                                    padding: '4px 10px', borderRadius: '12px', fontSize: '0.85em', fontWeight: 'bold',
+                                                    backgroundColor: esActivo ? 'rgba(40, 167, 69, 0.2)' : 'rgba(220, 53, 69, 0.2)', 
+                                                    color: esActivo ? '#28a745' : '#dc3545', 
+                                                    border: esActivo ? '1px solid #28a745' : '1px solid #dc3545',
+                                                    display: 'inline-flex', alignItems: 'center', gap: 5
                                                 }}>
-                                                    {activo ? 'Activo' : 'Inactivo'}
+                                                    {esActivo ? <FaCheckCircle size={10}/> : <FaUserSlash size={10}/>}
+                                                    {esActivo ? 'ACTIVO' : 'BAJA'}
                                                 </span>
                                             </td>
+
+                                            {/* ACCIONES */}
                                             <td className={styles.actionCell} style={{justifyContent: 'center', gap: '10px'}}>
                                                 
-                                                {/* 1. Ver Detalle (Insumos) */}
+                                                {/* 1. Rendimiento (Ojo Azul) */}
                                                 <button 
                                                     onClick={() => router.push(`/personal/${p.id_bar}`)} 
                                                     className={styles.actionButton} 
-                                                    title="Ver Insumos y Rendimiento"
+                                                    style={{color:'#0D6EFD', border:'1px solid #0D6EFD'}}
+                                                    title="Ver Rendimiento e Insumos"
                                                 >
-                                                    <FaEye color="#0D6EFD"/>
+                                                    <FaEye />
                                                 </button>
                                                 
-                                                {/* 2. Editar (Modal) */}
+                                                {/* 2. Editar (Lápiz Amarillo) */}
                                                 <button 
                                                     onClick={() => handleEdit(p)} 
                                                     className={styles.actionButton} 
+                                                    style={{color:'#ffc107', border:'1px solid #ffc107'}}
                                                     title="Editar Datos de Acceso"
                                                 >
-                                                    <FaEdit color="#ffc107"/>
+                                                    <FaEdit />
                                                 </button>
 
-                                                {/* 3. Eliminar / Desactivar (INTELIGENTE) */}
+                                                {/* 3. Baja/Eliminar (Papelera Roja) */}
                                                 <button 
                                                     onClick={() => handleDelete(p)} 
                                                     className={styles.actionButton} 
-                                                    title={activo ? "Desactivar (Baja Lógica)" : "Eliminar Definitivamente"}
+                                                    style={{color: esActivo ? '#dc3545' : '#666', border: esActivo ? '1px solid #dc3545' : '1px solid #666'}}
+                                                    title={esActivo ? "Dar de Baja" : "Ya está inactivo"}
+                                                    disabled={!esActivo} // Deshabilitamos si ya es baja
                                                 >
-                                                    <FaTrash color={activo ? "#ffc107" : "#dc3545"} />
+                                                    <FaTrash />
                                                 </button>
 
                                             </td>

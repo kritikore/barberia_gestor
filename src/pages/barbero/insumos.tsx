@@ -25,7 +25,7 @@ export default function InsumosBarberoPage() {
     if(!barbero) return null;
 
     return (
-        <AdminLayout>
+        <>
             <main>
                 {/* ENCABEZADO CON NAVEGACIÓN */}
                 <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:30}}>
@@ -82,6 +82,6 @@ export default function InsumosBarberoPage() {
                     </div>
                 )}
             </main>
-        </AdminLayout>
+        </>
     );
 }

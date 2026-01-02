@@ -10,7 +10,7 @@ interface Props {
 
 const ClientModal: React.FC<Props> = ({ onClose, onSuccess, fixedBarberId }) => {
     
-    // Estado para los datos de texto (y la URL de la foto para previsualizar)
+    // Estado para los datos
     const [formData, setFormData] = useState({
         nom_clie: '',
         apell_clie: '',
@@ -19,16 +19,15 @@ const ClientModal: React.FC<Props> = ({ onClose, onSuccess, fixedBarberId }) => 
         ocupacion: '',
         edad_clie: '',
         id_bar: fixedBarberId ? String(fixedBarberId) : '', 
-        fotoPreview: '' // Usamos esto solo para mostrar la imagen en pantalla
     });
     
-    // 📸 NUEVO ESTADO: Aquí guardamos el archivo real para enviarlo
-    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    // Guardamos la foto ya convertida en Base64 para enviar y visualizar
+    const [fotoBase64, setFotoBase64] = useState<string>('');
 
     const [loading, setLoading] = useState(false);
     const [barberos, setBarberos] = useState<any[]>([]);
 
-    // Cargar barberos SOLO si no hay un ID fijo
+    // Cargar barberos
     useEffect(() => {
         if (!fixedBarberId) {
             fetch('/api/personal')
@@ -38,50 +37,55 @@ const ClientModal: React.FC<Props> = ({ onClose, onSuccess, fixedBarberId }) => 
         }
     }, [fixedBarberId]);
 
-    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // 🔄 UTILIDAD: Convertir archivo a Base64 (Promesa)
+    const fileToBase64 = (file: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = error => reject(error);
+        });
+    };
+
+    const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
             if (file.size > 2 * 1024 * 1024) return alert("Imagen muy pesada (Máx 2MB)");
             
-            // 1. Guardamos el archivo real para el envío
-            setSelectedFile(file);
-
-            // 2. Creamos la vista previa para el usuario
-            const reader = new FileReader();
-            reader.onloadend = () => setFormData(prev => ({ ...prev, fotoPreview: reader.result as string }));
-            reader.readAsDataURL(file);
+            try {
+                // Convertimos a base64 inmediatamente
+                const base64 = await fileToBase64(file);
+                setFotoBase64(base64);
+            } catch (error) {
+                console.error("Error al procesar imagen", error);
+            }
         }
     };
 
-    // 🚀 CORRECCIÓN PRINCIPAL AQUÍ: Usamos FormData
+    // 🚀 ENVÍO COMO JSON (Compatible con Vercel Serverless)
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
 
-        const data = new FormData();
-        
-        // Agregamos los textos
-        data.append('nom_clie', formData.nom_clie);
-        data.append('apell_clie', formData.apell_clie);
-        data.append('tel_clie', formData.tel_clie);
-        data.append('email_clie', formData.email_clie);
-        data.append('ocupacion', formData.ocupacion);
-        data.append('edad_clie', formData.edad_clie);
-        
-        if (formData.id_bar) {
-            data.append('id_bar', formData.id_bar);
-        }
-
-        // Agregamos el archivo (Si existe)
-        if (selectedFile) {
-            data.append('foto', selectedFile);
-        }
+        // Preparamos el payload como objeto simple
+        const payload = {
+            nom_clie: formData.nom_clie,
+            apell_clie: formData.apell_clie,
+            tel_clie: formData.tel_clie,
+            email_clie: formData.email_clie,
+            ocupacion: formData.ocupacion,
+            edad_clie: parseInt(formData.edad_clie), // Aseguramos número
+            id_bar: formData.id_bar ? parseInt(formData.id_bar) : null,
+            foto: fotoBase64 || null // Enviamos el string base64 o null
+        };
 
         try {
             const res = await fetch('/api/clientes', {
                 method: 'POST',
-                // ⚠️ NOTA: No agregamos 'Content-Type', el navegador lo pone solo con FormData
-                body: data 
+                headers: {
+                    'Content-Type': 'application/json', // ⚠️ Importante: Ahora es JSON
+                },
+                body: JSON.stringify(payload) 
             });
 
             if (!res.ok) {
@@ -118,8 +122,8 @@ const ClientModal: React.FC<Props> = ({ onClose, onSuccess, fixedBarberId }) => 
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             backgroundColor: '#333', marginBottom: '10px'
                         }}>
-                            {formData.fotoPreview ? (
-                                <img src={formData.fotoPreview} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            {fotoBase64 ? (
+                                <img src={fotoBase64} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                             ) : <FaUser size={40} color="#666" />}
                         </div>
                         <label style={{ cursor: 'pointer', background: '#2A2A2A', padding: '8px 15px', borderRadius: '20px', fontSize: '0.9em', color: 'white', border: '1px solid #444', display:'flex', gap:5, alignItems:'center' }}>
@@ -162,7 +166,6 @@ const ClientModal: React.FC<Props> = ({ onClose, onSuccess, fixedBarberId }) => 
                             <input className={styles.input} value={formData.ocupacion} onChange={e => setFormData({...formData, ocupacion: e.target.value})} />
                         </div>
 
-                        {/* Si NO hay ID fijo, mostramos el selector */}
                         {!fixedBarberId && (
                             <div className={styles.formGroup}>
                                 <label>Asignar a Barbero</label>
