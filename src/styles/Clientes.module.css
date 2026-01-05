@@ -20,7 +20,7 @@
     color: var(--color-label); /* 🔑 Texto secundario: #CCCCCC */
     font-size: 0.9em;
     font-weight: bold;
-    border-bottom: 2px solid #333;
+    border-bottom: 2px solid #000000;
     /* Estilo específico para la columna de acciones */
     &:last-child {
         text-align: center;

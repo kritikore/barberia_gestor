@@ -229,6 +229,7 @@ const ClientDetailModal: React.FC<Props> = ({ clientId, onClose, onUpdateSuccess
                 )}
 
                 {/* CONTENIDO: HISTORIAL */}
+               {/* CONTENIDO: HISTORIAL CORREGIDO */}
                 {activeTab === 'historial' && (
                     <div style={{maxHeight: '300px', overflowY:'auto', border:'1px solid #333', borderRadius: 6}}>
                         {historial.length === 0 ? (
@@ -240,16 +241,20 @@ const ClientDetailModal: React.FC<Props> = ({ clientId, onClose, onUpdateSuccess
                                         <th style={{padding:12}}>Fecha</th>
                                         <th style={{padding:12}}>Servicio</th>
                                         <th style={{padding:12}}>Barbero</th>
+                                        {/* CORREGIDO: Título estático */}
                                         <th style={{padding:12}}>Total</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {historial.map((h, i) => (
+                                    {historial.map((h: any, i: number) => (
                                         <tr key={i} style={{borderBottom:'1px solid #333'}}>
                                             <td style={{padding:12}}>{new Date(h.fecha).toLocaleDateString()}</td>
                                             <td style={{padding:12}}><FaCut style={{marginRight:5}}/> {h.servicio}</td>
                                             <td style={{padding:12}}>{h.nom_bar}</td>
-                                            <td style={{padding:12, color:'#4caf50'}}>${h.total}</td>
+                                            {/* Lógica para mostrar Precio o Total */}
+                                            <td style={{padding:12, color:'#4caf50'}}>
+                                                ${h.total !== undefined ? h.total : (h.precio || 0)}
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>

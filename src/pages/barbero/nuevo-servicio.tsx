@@ -14,6 +14,22 @@ interface Cliente { id_clie: number; nom_clie: string; apell_clie: string; tel_c
 interface ServicioDB { id_serv: number; tipo: string; precio: string; }
 interface ServicioTicket { id_serv: number; nombre: string; precio: number; }
 
+// 1. Agrega este estado al inicio de tu componente
+const [enviarWhatsapp, setEnviarWhatsapp] = useState(true); // Marcado por defecto
+
+// 2. Pon esto en tu JSX, arriba del botón de "Guardar/Cobrar"
+<div style={{marginBottom: 15, display:'flex', alignItems:'center', gap: 10}}>
+    <input 
+        type="checkbox" 
+        checked={enviarWhatsapp} 
+        onChange={(e) => setEnviarWhatsapp(e.target.checked)}
+        id="checkWS"
+    />
+    <label htmlFor="checkWS" style={{color:'white', cursor:'pointer'}}>
+        Enviar recibo por WhatsApp automáticamente
+    </label>
+</div>
+
 const categoriasServicios = [
     "Corte de cabello", "Arreglo de barba y bigote", "Afeitado clásico",
     "Tratamientos capilares", "Tratamientos faciales", "Tintes",

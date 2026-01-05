@@ -42,7 +42,7 @@ const BarberClientePerfilPage: NextPage = () => {
                     setCliente(data.cliente);
                     setHistorial(data.historial.map((h: any) => ({ 
                         ...h, 
-                        total: parseFloat(h.total) 
+                        total: parseFloat(h.precio) 
                     })));
                 }
             } catch (err) { console.error(err); } 
@@ -60,7 +60,7 @@ const BarberClientePerfilPage: NextPage = () => {
     const getInitials = (nombre: string, apellido: string) => (nombre[0] || '') + (apellido[0] || '');
 
     return (
-        <BarberLayout>
+        <>
             <Head><title>Perfil - {cliente.nom_clie}</title></Head>
 
             <div style={{ maxWidth: '800px', margin: '0 auto' }}>
@@ -118,7 +118,7 @@ const BarberClientePerfilPage: NextPage = () => {
                     </table>
                 </div>
             </div>
-        </BarberLayout>
+        </>
     );
 };
 

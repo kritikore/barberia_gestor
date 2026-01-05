@@ -3,177 +3,88 @@
 /* -------------------- FUENTES -------------------- */
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap');
 
-/* -------------------- VARIABLES GLOBALES -------------------- */
+/* -------------------- VARIABLES -------------------- */
 :root {
-    --color-background: #1C1C1C;
-    --color-card: rgba(42, 42, 42, 0.85);
-    --color-input-bg: #1C1C1C;
-    --color-primary: #0D6EFD;
-    --color-accent: #F5C542;
-    --color-danger: #DC3545;
-    --color-text: #F8F9FA;
-    --color-label: #CCCCCC;
-
-    --radius: 14px;
-    --blur: 8px;
-    --shadow-soft: 0 10px 25px rgba(0,0,0,0.35);
-    --shadow-hover: 0 20px 45px rgba(0,0,0,0.6);
+    --color-background: #0a192f;
+    --color-card: #FFFFFF; /* Tarjetas Blancas */
+    --color-input-bg: #F0F2F5;
+    --color-primary: #4cc9f0; /* Azul Neón */
+    --color-accent: #ff4d4d;
+    --color-text: #000000; /* Texto Negro */
+    --color-label: #555555;
+    --border-color: #e1e4e8;
+    --radius: 12px;
+    --shadow-soft: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-/* -------------------- RESET + TRANSICIONES SUAVES -------------------- */
-* {
-    box-sizing: border-box;
-    padding: 0;
-    margin: 0;
-}
+/* -------------------- RESET -------------------- */
+* { box-sizing: border-box; padding: 0; margin: 0; }
+*, *::before, *::after { transition: all 0.2s ease-in-out; }
 
-*,
-*::before,
-*::after {
-    transition:
-        background-color 0.3s ease,
-        color 0.3s ease,
-        box-shadow 0.3s ease,
-        transform 0.3s ease,
-        border-color 0.3s ease;
-}
+html, body { max-width: 100vw; min-height: 100vh; overflow-x: hidden; }
 
-/* -------------------- ESTRUCTURA BASE -------------------- */
-html, body {
-    max-width: 100vw;
-    min-height: 100vh;
-    overflow-x: hidden;
-}
-
+/* -------------------- FONDO -------------------- */
 body {
     font-family: 'Roboto', sans-serif;
     color: var(--color-text);
-
-    /* Fondo cinematográfico */
-    background-color: transparent;
-    background-image:
-        linear-gradient(
-            rgba(0, 0, 0, 0.55),
-            rgba(0, 0, 0, 0.85)
-        ),
-        url('/bg-barber.jpg');
-
+    background-color: #0a192f;
+    background-image: url('/bg-barber.jpg');
     background-size: cover;
     background-position: center;
     background-attachment: fixed;
     background-repeat: no-repeat;
-
-    /* Animación de entrada */
-    animation: fadeInBody 1s ease forwards;
 }
 
-/* -------------------- CONTENEDOR NEXT -------------------- */
-#__next {
-    background: transparent;
-    min-height: 100vh;
-}
+#__next { min-height: 100vh; display: flex; flex-direction: column; }
+main { padding: 30px; width: 100%; max-width: 1400px; margin: 0 auto; flex: 1; }
 
-/* -------------------- LINKS -------------------- */
-a {
-    color: var(--color-primary);
-    text-decoration: none;
-}
-
-a:hover {
-    text-decoration: underline;
-}
-
-/* -------------------- TARJETAS (cards) GLOBALES -------------------- */
-.card {
-    background: var(--color-card);
-    backdrop-filter: blur(var(--blur));
+/* -------------------- TARJETAS (CORREGIDO) -------------------- */
+/* IMPORTANTE: Quitamos 'div[style*="background"]' para no romper los iconos */
+.card, .dashboard-card {
+    background-color: var(--color-card) !important;
+    color: var(--color-text) !important;
     border-radius: var(--radius);
+    padding: 30px;
     box-shadow: var(--shadow-soft);
-    padding: 20px;
+    border: 1px solid var(--border-color);
+    width: 100%;
 }
 
-.card:hover {
-    transform: translateY(-6px) scale(1.02);
-    box-shadow: var(--shadow-hover);
+/* -------------------- TABLAS -------------------- */
+table { width: 100% !important; border-collapse: collapse; margin-top: 20px; background: transparent; }
+th, td { padding: 18px; text-align: left; border-bottom: 1px solid var(--border-color); vertical-align: middle; }
+th { color: #333; font-size: 0.95rem; text-transform: uppercase; font-weight: 700; }
+td { color: var(--color-label); font-size: 1rem; }
+tr:hover td { background-color: #f9fafb; }
+
+/* -------------------- ICONOS -------------------- */
+/* Regla general para iconos */
+svg { vertical-align: middle; }
+
+/* Títulos con iconos */
+h1 svg, h2 svg {
+    font-size: 2.5rem; width: 40px; height: 40px; margin-right: 15px;
+    color: var(--color-primary);
+    filter: drop-shadow(0 0 5px rgba(76, 201, 240, 0.8));
 }
 
-/* -------------------- BOTONES -------------------- */
+/* Avatares */
+table img, .avatar {
+    width: 65px; height: 65px; object-fit: cover; border-radius: 50%;
+    border: 3px solid var(--color-primary);
+    box-shadow: 0 0 10px rgba(76, 201, 240, 0.4);
+}
+
+/* -------------------- TEXTOS Y BOTONES -------------------- */
+h1 { font-size: 2.4rem; color: #1a1a1a; margin-bottom: 1.5rem; display: flex; align-items: center; }
+h2 { font-size: 1.8rem; color: #333; margin-bottom: 1rem; display: flex; align-items: center; }
+
 button {
-    font-family: inherit;
-    background: linear-gradient(135deg, #2a2a2a, #111);
-    color: var(--color-text);
-    border-radius: 999px;
-    border: 1px solid rgba(255,255,255,0.15);
-    padding: 10px 18px;
-    cursor: pointer;
+    font-family: inherit; background: var(--color-primary); color: white;
+    border-radius: 8px; border: none; padding: 12px 25px; cursor: pointer; font-weight: 800;
+    text-transform: uppercase; font-size: 0.95rem;
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: 8px; box-shadow: 0 4px 14px rgba(76, 201, 240, 0.3);
 }
-
-button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
-}
-
-button:active {
-    transform: scale(0.96);
-}
-
-/* Botón peligro */
-button.danger {
-    border-color: var(--color-danger);
-    color: var(--color-danger);
-}
-
-/* -------------------- HEADERS -------------------- */
-h1, h2, h3, h4 {
-    font-weight: 700;
-    letter-spacing: 0.5px;
-}
-
-h1 {
-    text-shadow: 0 4px 25px rgba(0,0,0,0.6);
-}
-
-/* -------------------- SCROLLBAR ELEGANTE -------------------- */
-::-webkit-scrollbar {
-    width: 8px;
-}
-
-::-webkit-scrollbar-thumb {
-    background: linear-gradient(
-        var(--color-accent),
-        #bfa033
-    );
-    border-radius: 20px;
-}
-
-::-webkit-scrollbar-track {
-    background: rgba(0,0,0,0.4);
-}
-
-/* -------------------- ANIMACIONES -------------------- */
-@keyframes fadeInBody {
-    from {
-        opacity: 0;
-        transform: scale(1.01);
-    }
-    to {
-        opacity: 1;
-        transform: scale(1);
-    }
-}
-
-@keyframes slideUp {
-    from {
-        opacity: 0;
-        transform: translateY(30px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-/* Clase utilitaria */
-.animate-in {
-    animation: slideUp 0.8s ease forwards;
-}
+button:hover { transform: translateY(-2px); background: #3dbce6; }
+button.danger { background: var(--color-accent) !important; color: white !important; }

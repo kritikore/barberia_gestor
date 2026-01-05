@@ -1,98 +1,116 @@
 import React from 'react';
-import styles from '@/styles/Modal.module.css'; // Reutilizamos estilos básicos de modal
 import { FaPrint, FaWhatsapp, FaTimes, FaCheckCircle } from 'react-icons/fa';
 
 interface TicketProps {
-    data: {
-        cliente: string;
-        servicio: string;
-        precio: number;
-        barbero: string;
-        fecha: string;
-        hora: string;
-        folio: number; // ID de la cita o venta
-    };
+    data: any; // Recibe los datos del corte
     onClose: () => void;
 }
 
 const TicketModal: React.FC<TicketProps> = ({ data, onClose }) => {
+    if (!data) return null;
 
+    // --- LÓGICA DE WHATSAPP ---
+    const enviarPorWhatsApp = () => {
+        // Intentamos obtener el teléfono de varias formas posibles
+        const telefono = data.tel_clie || data.telefono || "";
+
+        if (!telefono || telefono.length < 5) {
+            return alert("Este cliente no tiene un teléfono registrado válido.");
+        }
+
+        // Limpiar número y agregar lada (Ej. 52 para México)
+        const telLimpio = telefono.replace(/\D/g, '');
+        const numeroFinal = telLimpio.length === 10 ? `52${telLimpio}` : telLimpio;
+
+        const nombre = data.cliente || "Cliente";
+        const servicio = data.servicio || "Servicio";
+        const total = data.precio || 0;
+        const folio = data.folio || "000";
+
+        // Mensaje del recibo
+        const mensaje = `🧾 *RECIBO DE PAGO* \nFolio: #${folio}\n\nHola *${nombre}*, gracias por tu visita.\n\n✂️ Servicio: ${servicio}\n💰 Total Pagado: $${total}\n\n¡Esperamos verte pronto! 💈`;
+
+        const url = `https://wa.me/${numeroFinal}?text=${encodeURIComponent(mensaje)}`;
+        window.open(url, '_blank');
+    };
+
+    // --- LÓGICA DE IMPRESIÓN ---
     const handlePrint = () => {
         window.print();
     };
 
     return (
-        <div className={styles.modalBackdrop}>
-            <div className={styles.modalContent} style={{ maxWidth: '350px', padding: '0', background: 'white', color: 'black' }}>
+        <div style={{
+            position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+            backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 1000,
+            display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}>
+            <div style={{
+                backgroundColor: 'white', color: 'black', padding: '30px', borderRadius: '10px',
+                width: '350px', textAlign: 'center', position: 'relative', boxShadow: '0 10px 25px rgba(0,0,0,0.5)'
+            }}>
+                {/* Botón Cerrar */}
+                <button onClick={onClose} style={{
+                    position: 'absolute', top: 10, right: 10, background: 'none', 
+                    border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: '#666'
+                }}>
+                    <FaTimes />
+                </button>
+
+                {/* Icono Éxito */}
+                <FaCheckCircle size={50} color="#28a745" style={{marginBottom: 15}}/>
                 
-                {/* CABECERA VISUAL DE APP (No sale en impresión si configuras CSS print) */}
-                <div style={{ padding: '10px', background: '#222', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTopLeftRadius: '8px', borderTopRightRadius: '8px' }}>
-                    <span style={{ color: '#4ade80', fontWeight: 'bold', display: 'flex', gap: 5, alignItems: 'center' }}>
-                        <FaCheckCircle /> Cobro Exitoso
-                    </span>
-                    <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}><FaTimes /></button>
+                <h2 style={{margin: '0 0 10px 0'}}>¡Cobro Exitoso!</h2>
+                <p style={{color: '#666', fontSize: '0.9rem', marginBottom: 20}}>El servicio ha sido registrado.</p>
+
+                {/* TICKET VISUAL */}
+                <div style={{
+                    background: '#f8f9fa', padding: 15, borderRadius: 8, 
+                    border: '1px dashed #ccc', marginBottom: 20, textAlign: 'left', fontSize: '0.9rem'
+                }}>
+                    <div style={{display:'flex', justifyContent:'space-between', marginBottom:5}}>
+                        <strong>Folio:</strong> <span>#{data.folio}</span>
+                    </div>
+                    <div style={{display:'flex', justifyContent:'space-between', marginBottom:5}}>
+                        <strong>Cliente:</strong> <span>{data.cliente}</span>
+                    </div>
+                    <div style={{display:'flex', justifyContent:'space-between', marginBottom:5}}>
+                        <strong>Servicio:</strong> <span>{data.servicio}</span>
+                    </div>
+                    <div style={{display:'flex', justifyContent:'space-between', marginBottom:5}}>
+                        <strong>Barbero:</strong> <span>{data.barbero}</span>
+                    </div>
+                    <hr style={{margin: '10px 0', border: 'none', borderTop: '1px solid #ddd'}}/>
+                    <div style={{display:'flex', justifyContent:'space-between', fontSize: '1.1rem'}}>
+                        <strong>Total:</strong> <span style={{color:'#28a745', fontWeight:'bold'}}>${data.precio}</span>
+                    </div>
                 </div>
 
-                {/* EL TICKET IMPRIMIBLE */}
-                <div id="printable-ticket" style={{ padding: '20px', fontFamily: "'Courier New', Courier, monospace", textAlign: 'center' }}>
-                    
-                    <h2 style={{ margin: '0 0 5px 0', textTransform: 'uppercase', fontSize: '1.2rem' }}>Barbería El Patrón</h2>
-                    <p style={{ margin: 0, fontSize: '0.8rem', color: '#555' }}>Calle Falsa 123, CDMX</p>
-                    <p style={{ margin: '0 0 15px 0', fontSize: '0.8rem', color: '#555' }}>Tel: 55-1234-5678</p>
-                    
-                    <div style={{ borderBottom: '2px dashed black', margin: '10px 0' }}></div>
-
-                    <div style={{ textAlign: 'left', fontSize: '0.9rem', lineHeight: '1.5' }}>
-                        <p style={{ margin: 0 }}><strong>Folio:</strong> #{data.folio}</p>
-                        <p style={{ margin: 0 }}><strong>Fecha:</strong> {data.fecha} {data.hora}</p>
-                        <p style={{ margin: 0 }}><strong>Barbero:</strong> {data.barbero}</p>
-                        <p style={{ margin: 0 }}><strong>Cliente:</strong> {data.cliente}</p>
-                    </div>
-
-                    <div style={{ borderBottom: '2px dashed black', margin: '10px 0' }}></div>
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '1.1rem', margin: '15px 0' }}>
-                        <span>{data.servicio}</span>
-                        <span>${data.precio}</span>
-                    </div>
-
-                    <div style={{ borderBottom: '2px dashed black', margin: '10px 0' }}></div>
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.3rem', fontWeight: '900', marginTop: '10px' }}>
-                        <span>TOTAL:</span>
-                        <span>${data.precio}</span>
-                    </div>
-
-                    <p style={{ marginTop: '20px', fontSize: '0.8rem', fontStyle: 'italic' }}>¡Gracias por su preferencia!</p>
-                </div>
-
-                {/* BOTONES DE ACCIÓN (No salen en impresión idealmente) */}
-                <div style={{ padding: '15px', background: '#f8f9fa', borderBottomLeftRadius: '8px', borderBottomRightRadius: '8px', display: 'flex', gap: '10px' }}>
+                {/* ACCIONES */}
+                <div style={{display: 'flex', gap: 10}}>
                     <button 
                         onClick={handlePrint}
-                        style={{ flex: 1, background: '#222', color: 'white', border: 'none', padding: '10px', borderRadius: '5px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}
+                        style={{
+                            flex: 1, padding: '10px', border: '1px solid #ccc', background: 'white', 
+                            color: '#333', borderRadius: 6, cursor: 'pointer', display: 'flex', 
+                            alignItems: 'center', justifyContent: 'center', gap: 5, fontWeight: 'bold'
+                        }}
                     >
                         <FaPrint /> Imprimir
                     </button>
+
                     <button 
-                        onClick={() => alert("Función para compartir enlace del ticket")}
-                        style={{ flex: 1, background: '#25D366', color: 'white', border: 'none', padding: '10px', borderRadius: '5px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}
+                        onClick={enviarPorWhatsApp} // 👈 AQUÍ LLAMAMOS A LA FUNCIÓN REAL
+                        style={{
+                            flex: 1, padding: '10px', border: 'none', background: '#25D366', 
+                            color: 'white', borderRadius: 6, cursor: 'pointer', display: 'flex', 
+                            alignItems: 'center', justifyContent: 'center', gap: 5, fontWeight: 'bold'
+                        }}
                     >
-                        <FaWhatsapp /> Enviar
+                        <FaWhatsapp size={18} /> WhatsApp
                     </button>
                 </div>
-
             </div>
-            
-            {/* Estilos para impresión básica */}
-            <style jsx global>{`
-                @media print {
-                    body * { visibility: hidden; }
-                    #printable-ticket, #printable-ticket * { visibility: visible; }
-                    #printable-ticket { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; }
-                    .modalBackdrop { background: white; }
-                }
-            `}</style>
         </div>
     );
 };

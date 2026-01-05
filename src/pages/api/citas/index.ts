@@ -13,6 +13,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     c.*, 
                     b.nom_bar, 
                     b.apell_bar,
+                    
                     -- ✅ FIX: Usamos CONCAT para evitar que un NULL rompa todo el string
                     CONCAT(b.nom_bar, ' ', b.apell_bar) as nombre_barbero,
                     CONCAT(cl.nom_clie, ' ', cl.apell_clie) as nombre_cliente,

@@ -32,15 +32,15 @@ const BarberDashboard: NextPage = () => {
             <div style={{padding: '20px', maxWidth: '1200px', margin: '0 auto'}}>
                 
                 {/* HEADER DE BIENVENIDA */}
-                <header style={{marginBottom: '40px', borderBottom: '1px solid #333', paddingBottom: '20px'}}>
-                    <h1 style={{color: 'white', margin: '0 0 10px 0', fontSize: '2rem'}}>
-                        Hola, <span style={{color: 'var(--color-accent)'}}>{barbero.nom_bar}</span> 👋
+                <header style={{marginBottom: '40px', paddingBottom: '20px', borderBottom: '1px solid rgba(255,255,255,0.2)'}}>
+                    <h1 style={{color: 'white', margin: '0 0 10px 0', textShadow: '0 2px 4px rgba(0,0,0,0.5)'}}>
+                        Hola, <span style={{color: 'var(--color-primary)', marginLeft: '10px'}}>{barbero.nom_bar}</span> 👋
                     </h1>
                     <div style={{display:'flex', alignItems:'center', gap: 10}}>
-                        <span style={{background: '#333', padding: '5px 12px', borderRadius: '20px', fontSize: '0.85rem', color: '#ccc'}}>
+                        <span style={{background: 'rgba(0,0,0,0.6)', padding: '5px 12px', borderRadius: '20px', fontSize: '0.85rem', color: '#fff', border: '1px solid #444'}}>
                             ID Empleado: {barbero.id_bar}
                         </span>
-                        <span style={{background: '#28a745', padding: '5px 12px', borderRadius: '20px', fontSize: '0.85rem', color: 'white', fontWeight: 'bold'}}>
+                        <span style={{background: '#28a745', padding: '5px 12px', borderRadius: '20px', fontSize: '0.85rem', color: 'white', fontWeight: 'bold', boxShadow: '0 0 10px rgba(40, 167, 69, 0.4)'}}>
                             Activo
                         </span>
                     </div>
@@ -54,64 +54,64 @@ const BarberDashboard: NextPage = () => {
                 }}>
 
                     {/* 1. NUEVO CLIENTE */}
-                    <div onClick={() => setIsQuickAddOpen(true)} className="dashboard-card" style={cardStyle}>
+                    <div onClick={() => setIsQuickAddOpen(true)} className="dashboard-card" style={{cursor: 'pointer'}}>
                         <div style={iconContainerStyle('#28a745')}>
-                            <FaUserPlus size={32} color="white" />
+                            <FaUserPlus size={30} color="white" />
                         </div>
                         <div style={{textAlign: 'center'}}>
-                            <h3 style={titleStyle}>Nuevo Cliente</h3>
-                            <p style={descStyle}>Registrar en mi cartera</p>
+                            <h3>Nuevo Cliente</h3>
+                            <p>Registrar en mi cartera</p>
                         </div>
                     </div>
 
                     {/* 2. MI DIRECTORIO */}
                     <Link href="/barbero/clientes" style={{textDecoration:'none'}}>
-                        <div className="dashboard-card" style={cardStyle}>
+                        <div className="dashboard-card">
                             <div style={iconContainerStyle('#17a2b8')}>
-                                <FaAddressBook size={32} color="white" />
+                                <FaAddressBook size={30} color="white" />
                             </div>
                             <div style={{textAlign: 'center'}}>
-                                <h3 style={titleStyle}>Mi Directorio</h3>
-                                <p style={descStyle}>Ver mis clientes</p>
+                                <h3>Mi Directorio</h3>
+                                <p>Ver mis clientes</p>
                             </div>
                         </div>
                     </Link>
 
                     {/* 3. MI AGENDA */}
                     <Link href="/barbero/citas" style={{textDecoration:'none'}}>
-                        <div className="dashboard-card" style={cardStyle}>
+                        <div className="dashboard-card">
                             <div style={iconContainerStyle('#ffc107')}>
-                                <FaCalendarAlt size={32} color="black" />
+                                <FaCalendarAlt size={30} color="white" />
                             </div>
                             <div style={{textAlign: 'center'}}>
-                                <h3 style={titleStyle}>Mi Agenda</h3>
-                                <p style={descStyle}>Ver mis citas del día</p>
+                                <h3>Mi Agenda</h3>
+                                <p>Ver mis citas del día</p>
                             </div>
                         </div>
                     </Link>
 
                     {/* 4. TIENDA */}
                     <Link href="/barbero/ventas" style={{textDecoration:'none'}}>
-                        <div className="dashboard-card" style={cardStyle}>
+                        <div className="dashboard-card">
                             <div style={iconContainerStyle('#0D6EFD')}>
-                                <FaShoppingBag size={32} color="white" />
+                                <FaShoppingBag size={30} color="white" />
                             </div>
                             <div style={{textAlign: 'center'}}>
-                                <h3 style={titleStyle}>Tienda</h3>
-                                <p style={descStyle}>Vender productos</p>
+                                <h3>Tienda</h3>
+                                <p>Vender productos</p>
                             </div>
                         </div>
                     </Link>
 
                     {/* 5. INSUMOS */}
                     <Link href="/barbero/insumos" style={{textDecoration:'none'}}>
-                        <div className="dashboard-card" style={cardStyle}>
+                        <div className="dashboard-card">
                             <div style={iconContainerStyle('#6c757d')}>
-                                <FaBoxOpen size={32} color="white" />
+                                <FaBoxOpen size={30} color="white" />
                             </div>
                             <div style={{textAlign: 'center'}}>
-                                <h3 style={titleStyle}>Mis Insumos</h3>
-                                <p style={descStyle}>Stock personal</p>
+                                <h3>Mis Insumos</h3>
+                                <p>Stock personal</p>
                             </div>
                         </div>
                     </Link>
@@ -122,56 +122,48 @@ const BarberDashboard: NextPage = () => {
             {/* Estilos CSS en JS para hover effects */}
             <style jsx>{`
                 .dashboard-card {
+                    /* Estos estilos complementan a globals.css */
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 20px;
                     transition: transform 0.2s ease, box-shadow 0.2s ease;
+                    cursor: pointer;
+                    height: 100%;
                 }
                 .dashboard-card:hover {
                     transform: translateY(-5px);
-                    box-shadow: 0 10px 20px rgba(0,0,0,0.3);
-                    border-color: var(--color-accent) !important;
+                    box-shadow: 0 12px 25px rgba(0,0,0,0.15);
+                    border-color: var(--color-primary) !important;
+                }
+                .dashboard-card h3 {
+                    margin: 0 0 5px 0;
+                    color: #333; /* Texto oscuro */
+                    font-size: 1.2rem;
+                    font-weight: 700;
+                }
+                .dashboard-card p {
+                    margin: 0;
+                    color: #666; /* Texto gris */
+                    font-size: 0.9rem;
                 }
             `}</style>
         </>
     );
 };
 
-// Estilos Base
-const cardStyle: React.CSSProperties = { 
-    backgroundColor: '#1E1E1E', 
-    borderRadius: '16px', 
-    padding: '30px 20px', 
-    display: 'flex', 
-    flexDirection: 'column', 
-    alignItems: 'center', 
-    border: '1px solid #333', 
-    cursor: 'pointer', 
-    height: '100%', 
-    justifyContent: 'center', 
-    gap: '20px',
-    boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
-};
-
+// Estilo para el círculo del icono
 const iconContainerStyle = (color: string): React.CSSProperties => ({ 
     backgroundColor: color, 
-    width: '70px', 
-    height: '70px', 
+    width: '65px', 
+    height: '65px', 
     borderRadius: '50%', 
     display: 'flex', 
     alignItems: 'center', 
     justifyContent: 'center',
-    boxShadow: '0 4px 10px rgba(0,0,0,0.2)'
+    boxShadow: '0 4px 10px rgba(0,0,0,0.2)',
+    marginBottom: '5px'
 });
-
-const titleStyle: React.CSSProperties = { 
-    margin: '0 0 5px 0', 
-    color: 'white', 
-    fontSize: '1.3rem',
-    fontWeight: '600'
-};
-
-const descStyle: React.CSSProperties = { 
-    margin: 0, 
-    color: '#888', 
-    fontSize: '0.95rem' 
-};
 
 export default BarberDashboard;

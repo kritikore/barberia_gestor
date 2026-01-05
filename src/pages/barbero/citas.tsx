@@ -65,13 +65,52 @@ const MisCitasPage: NextPage = () => {
         if(!confirm("¿Cliente NO llegó?")) return;
         try { await fetch(`/api/citas/${id}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({estado:'No Asistió'}) }); fetchCitas(); } catch(e) { alert("Error"); }
     };
-    const handleConfirmarCobro = async (metodo: string, datos?: any) => {
-        if (!citaParaCobrar) return;
+    
+   const handleConfirmarCobro = async (metodo: string, datos?: any) => {
+        // CORRECCIÓN AQUÍ: Agregamos "!barbero" para proteger contra nulos
+        if (!citaParaCobrar || !barbero) return; 
+        
         try {
-            const res = await fetch(`/api/citas/${citaParaCobrar.id_cita}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({estado:'Completada', metodo_pago: metodo}) });
+            // 1. Guardamos el cobro en la base de datos
+            const res = await fetch(`/api/citas/${citaParaCobrar.id_cita}`, { 
+                method: 'PUT', 
+                headers: {'Content-Type':'application/json'}, 
+                body: JSON.stringify({estado:'Completada', metodo_pago: metodo}) 
+            });
+
             if (res.ok) {
-                setTicketData({ ...citaParaCobrar, metodoPago: metodo, fecha: citaParaCobrar.fecha.substring(0,10), precio: citaParaCobrar.precio||0, barbero: `${barbero.nom_bar} ${barbero.apell_bar}`, cliente: citaParaCobrar.nombre_cliente, servicio: citaParaCobrar.nombre_servicio, folio: citaParaCobrar.id_cita });
-                setCitaParaCobrar(null); fetchCitas();
+                // === AUTOMATIZACIÓN WHATSAPP ===
+                const telefono = citaParaCobrar.tel_clie || citaParaCobrar.telefono; 
+                
+                if (telefono && telefono.length > 5) {
+                    const telLimpio = telefono.replace(/\D/g, '');
+                    const numeroFinal = telLimpio.length === 10 ? `52${telLimpio}` : telLimpio;
+                    
+                    const nombre = citaParaCobrar.nombre_cliente || "Cliente";
+                    const servicio = citaParaCobrar.nombre_servicio || "Corte";
+                    const precio = citaParaCobrar.precio || 0;
+                    
+                    const mensaje = `Hola *${nombre}* 👋,\n\nGracias por tu visita hoy. Tu servicio de *${servicio}* ($${precio}) ha sido cobrado exitosamente.\n\n¡Te esperamos pronto! 💈`;
+                    
+                    const url = `https://wa.me/${numeroFinal}?text=${encodeURIComponent(mensaje)}`;
+                    window.open(url, '_blank');
+                }
+
+                // 2. Mostramos el Ticket
+                setTicketData({ 
+                    ...citaParaCobrar, 
+                    metodoPago: metodo, 
+                    fecha: citaParaCobrar.fecha.substring(0,10), 
+                    precio: citaParaCobrar.precio||0, 
+                    // Como validamos arriba, aquí ya no dará error
+                    barbero: `${barbero.nom_bar} ${barbero.apell_bar}`, 
+                    cliente: citaParaCobrar.nombre_cliente, 
+                    servicio: citaParaCobrar.nombre_servicio, 
+                    folio: citaParaCobrar.id_cita 
+                });
+                
+                setCitaParaCobrar(null); 
+                fetchCitas();
             }
         } catch (error) { console.error(error); }
     };

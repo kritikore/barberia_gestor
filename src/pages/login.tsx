@@ -5,13 +5,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import styles from '@/styles/Login.module.css';
 
-// Definición de la interfaz del estado
 interface LoginFormState {
   email: string;
   password: string;
 }
 
-// Definición del componente
 const LoginPage: NextPage = () => {
   const router = useRouter();
 
@@ -24,61 +22,64 @@ const LoginPage: NextPage = () => {
   const [error, setError] = useState<string | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
     setFormState(prevState => ({
       ...prevState,
-      [e.target.name]: e.target.value,
+      [name]: value,
     }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError(null);
     setIsLoading(true);
 
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        // CORRECCIÓN IMPORTANTE: Se envía formState, no FormData
-        body: JSON.stringify(formState) 
-      });
+        const res = await fetch('http://localhost:3000/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                email: formState.email, 
+                password: formState.password 
+            }) 
+        });
 
-      const data = await res.json();
+        const data = await res.json();
 
-      if (res.ok) {
-        console.log("Login exitoso, datos recibidos:", data.user); // 🔍 DEBUG
+        if (res.ok) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('barbero_data'); // Limpiamos datos viejos
 
-        // 1. Guardamos en localStorage
-        localStorage.setItem('usuario_activo', JSON.stringify(data.user));
+            localStorage.setItem('token', data.token);
 
-        localStorage.setItem('app_version', 'v1.0_produccion');
+            // Detectar usuario
+            const usuario = data.user || data.usuario || data;
+            
+            // 👇👇👇 NUEVO: GUARDAMOS LOS DATOS DEL USUARIO EN TEXTO PLANO 👇👇👇
+            localStorage.setItem('barbero_data', JSON.stringify(usuario)); 
+            // 👆👆👆 ESTO ES LA CLAVE PARA QUE NO FALLE 👆👆👆
 
-        // 2. Verificamos que se guardó correctamente antes de redirigir
-        const guardado = localStorage.getItem('usuario_activo');
+            const rawRole = usuario.role || usuario.rol || usuario.id_rol;
+            const role = String(rawRole).toLowerCase().trim();
 
-        if (guardado) {
-          console.log("Sesión guardada correctamente. Redirigiendo...");
-          // Pequeña pausa de seguridad de 100ms
-          setTimeout(() => {
-            if (data.user.role === 'admin') {
-              router.push('/dashboard');
+            console.log("👤 Guardando sesión de:", usuario.email);
+
+            if (role === 'barbero' || role === '2') {
+                router.push('/barbero/dashboard'); 
+            } else if (role === 'admin' || role === 'administrador' || role === '1') {
+                router.push('/dashboard'); 
             } else {
-              router.push('/barbero/dashboard');
+                setError(`Rol desconocido (${rawRole}).`);
             }
-          }, 100);
-        } else {
-          setError("Error al guardar la sesión en el navegador.");
-          setIsLoading(false);
-        }
 
-      } else {
-        setError(data.message || 'Error al iniciar sesión');
+        } else {
+            setError(data.message || 'Error al iniciar sesión');
+        }
+    } catch (err: any) {
+        console.error(err);
+        setError('Error de conexión con el servidor');
+    } finally {
         setIsLoading(false);
-      }
-    } catch (err) {
-      console.error(err);
-      setError('Error de conexión con el servidor');
-      setIsLoading(false);
     }
   };
 
@@ -99,7 +100,7 @@ const LoginPage: NextPage = () => {
               className={styles.loginInput}
               id="email"
               name="email"
-              type="text" // Cambiado a text para aceptar user o email
+              type="text"
               placeholder="dev@gestor.com"
               value={formState.email}
               onChange={handleChange}
@@ -131,12 +132,11 @@ const LoginPage: NextPage = () => {
           </button>
         </form>
         
-        {/* Enlace a la página de registro */}
         <div style={{ marginTop: '25px', textAlign: 'center', color: 'var(--color-label)' }}>
             <p>
                 ¿OLVIDASTE TU CONTRASEÑA?{' '}
                 <Link 
-                    href="/register" 
+                    href="/recuperar" 
                     style={{ 
                         color: 'var(--color-accent)', 
                         fontWeight: 'bold', 
@@ -144,7 +144,7 @@ const LoginPage: NextPage = () => {
                         cursor: 'pointer'
                     }}
                 >
-                    Recuperala aqui
+                    Recupérala aquí
                 </Link>
             </p>
         </div>

@@ -62,7 +62,7 @@ const ClientesBarberoPage: NextPage = () => {
         } catch (error) { console.error(error); }
     };
 
-    if (sessionLoading || !barbero) return <div style={{color:'white', padding:50}}>Cargando...</div>;
+    if (sessionLoading || !barbero) return <div style={{color:'black', padding:50}}>Cargando...</div>;
 
     return (
         <>
@@ -84,7 +84,7 @@ const ClientesBarberoPage: NextPage = () => {
             <main>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
                     <div style={{display:'flex', alignItems:'center', gap: 15}}>
-                        <button onClick={() => router.back()} style={{background:'none', border:'none', color:'#aaa', cursor:'pointer', fontSize:'1.2rem'}}><FaArrowLeft /></button>
+                        <button onClick={() => router.back()} style={{background:'none', border:'none', color:'#000000ff', cursor:'pointer', fontSize:'1.2rem'}}><FaArrowLeft /></button>
                         <h1 style={{margin:0}}><FaUsers style={{marginRight:10, color:'var(--color-accent)'}}/> Mi Directorio</h1>
                     </div>
                     <button onClick={() => setIsAddModalOpen(true)} style={{backgroundColor:'var(--color-accent)', color:'black', border:'none', padding:'10px 20px', borderRadius:'8px', cursor:'pointer', fontWeight:'bold', display:'flex', alignItems:'center', gap:'8px'}}>
@@ -104,21 +104,21 @@ const ClientesBarberoPage: NextPage = () => {
                         </thead>
                         <tbody>
                             {loading ? (
-                                <tr><td colSpan={4} style={{textAlign:'center', padding:20, color:'white'}}>Cargando cartera...</td></tr>
+                                <tr><td colSpan={4} style={{textAlign:'center', padding:20, color:'black'}}>Cargando cartera...</td></tr>
                             ) : clientes.length === 0 ? (
-                                <tr><td colSpan={4} style={{textAlign:'center', padding:30, color:'#aaa'}}>Tu cartera está vacía. ¡Agrega tu primer cliente!</td></tr>
+                                <tr><td colSpan={4} style={{textAlign:'center', padding:30, color:'#000000ff'}}>Tu cartera está vacía. ¡Agrega tu primer cliente!</td></tr>
                             ) : (
                                 clientes.map((cli) => {
                                     const avatarSrc = renderFoto(cli.foto);
                                     return (
                                         <tr key={cli.id_clie}>
                                             <td onClick={() => setSelectedClientId(cli.id_clie)} style={{cursor:'pointer'}}>
-                                                <div style={{width: '40px', height: '40px', borderRadius: '50%', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#333', border: '2px solid var(--color-accent)'}}>
-                                                    {avatarSrc ? <img src={avatarSrc} style={{width: '100%', height: '100%', objectFit: 'cover'}} /> : <FaUserCircle size={25} color="#666" />}
+                                                <div style={{width: '40px', height: '40px', borderRadius: '50%', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0b0b0bff', border: '2px solid var(--color-accent)'}}>
+                                                    {avatarSrc ? <img src={avatarSrc} style={{width: '100%', height: '100%', objectFit: 'cover'}} /> : <FaUserCircle size={25} color="#000000ff" />}
                                                 </div>
                                             </td>
-                                            <td style={{fontWeight:'bold', color:'white'}}>{cli.nom_clie} {cli.apell_clie}</td>
-                                            <td style={{color:'#ccc'}}><FaPhone size={12} style={{marginRight:5}}/>{cli.tel_clie}</td>
+                                            <td style={{fontWeight:'bold', color:'black'}}>{cli.nom_clie} {cli.apell_clie}</td>
+                                            <td style={{color:'#020202ff'}}><FaPhone size={12} style={{marginRight:5}}/>{cli.tel_clie}</td>
 
                                             {/* ACCIONES BARBERO */}
                                             <td>

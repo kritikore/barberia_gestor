@@ -27,12 +27,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
 
             // Buscamos historial de citas/servicios
+            // Buscamos historial de citas/servicios
+            // Buscamos historial de citas/servicios
             const historialQuery = `
-                SELECT c.fecha, s.tipo as servicio, b.nom_bar, v.total
+                SELECT 
+                    c.fecha, 
+                    s.tipo as servicio, 
+                    b.nom_bar, 
+                    -- CORRECCIÓN: Usamos s.precio (Precio del Servicio) porque c.precio no existe
+                    COALESCE(s.precio, 0) as total
                 FROM cita c
                 LEFT JOIN servicio s ON c.id_serv = s.id_serv
                 LEFT JOIN barber b ON c.id_bar = b.id_bar
-                LEFT JOIN venta v ON v.id_bar = c.id_bar -- Esto es un ejemplo, ajusta según tu relación real de historial
                 WHERE c.id_clie = $1
                 ORDER BY c.fecha DESC
                 LIMIT 10

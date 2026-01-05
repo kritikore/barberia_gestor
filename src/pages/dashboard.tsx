@@ -3,18 +3,25 @@ import { NextPage } from 'next';
 import Head from 'next/head';
 import Link from 'next/link';
 import { 
-    FaCut, FaShoppingBag, FaBoxOpen, FaTrophy, FaChartLine, 
-    FaCalendarDay, FaTags, FaFilePdf, FaMoneyBillWave, FaClock, FaPrint, FaArrowRight 
+    FaCut, FaShoppingBag, FaBoxOpen, FaChartLine, 
+    FaCalendarDay, FaFilePdf, FaMoneyBillWave, FaClock, FaPrint, FaArrowRight, FaCheckCircle, FaExclamationCircle 
 } from 'react-icons/fa';
 import { 
-    ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, 
+    ComposedChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, 
     ResponsiveContainer, Area, Legend 
 } from 'recharts';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 // --- INTERFACES ---
-interface CitaItem { hora: string; cliente: string; servicio: string; precio?: number; }
+interface CitaItem { 
+    fecha: string; // Agregamos fecha para saber el día
+    hora: string; 
+    cliente: string; 
+    servicio: string; 
+    precio?: number; 
+    estatus: string; // Estado real
+}
 interface VentaItem { producto: string; cantidad: number; total: number; vendedor: string; hora: string; }
 interface ServicioItem { fecha: string; hora: string; barbero: string; cliente: string; servicio: string; precio: number; }
 
@@ -39,36 +46,63 @@ const DashboardPage: NextPage = () => {
         empresa: "Mi Barbería", rfc: "", direccion: "", iva: 16
     });
 
-    useEffect(() => {
-        setLoading(true);
-        fetch(`/api/dashboard/metrics?period=${period}`)
-            .then(res => res.json())
-            .then(d => { setData(d); setLoading(false); })
-            .catch(e => { console.error(e); setLoading(false); });
+   useEffect(() => {
+        const loadData = (isBackgroundUpdate = false) => {
+            if (!isBackgroundUpdate) setLoading(true);
+
+            const timestamp = new Date().getTime(); 
+            
+            // Nota: Asegúrate que tu API backend traiga citas futuras, no solo las de hoy.
+            fetch(`/api/dashboard/metrics?period=${period}&_t=${timestamp}`, {
+                cache: 'no-store'
+            })
+                .then(res => res.json())
+                .then(d => { 
+                    setData(d); 
+                    setLoading(false); 
+                })
+                .catch(e => { 
+                    console.error(e); 
+                    setLoading(false); 
+                });
+        };
+
+        loadData();
+
+        const intervalId = setInterval(() => {
+            loadData(true); 
+        }, 10000); 
+
+        return () => clearInterval(intervalId);
+
     }, [period]);
 
-    // --- PROCESAMIENTO DE DATOS PARA GRÁFICO COMPLEJO ---
-    // Convertimos la lista plana de ventas en datos agrupados por HORA para ver tendencias
+    // --- PROCESAMIENTO DE DATOS PARA GRÁFICO ---
+   // --- PROCESAMIENTO DE DATOS PARA GRÁFICO (CORREGIDO) ---
     const chartData = useMemo(() => {
         if (!data) return [];
         
-        // Creamos un mapa de horas (09:00 a 20:00)
+        // 1. Preparamos las horas
         const hoursMap: Record<string, { hora: string, servicios: number, productos: number }> = {};
         for(let i=9; i<=21; i++) {
             const h = i < 10 ? `0${i}:00` : `${i}:00`;
             hoursMap[h] = { hora: h, servicios: 0, productos: 0 };
         }
 
-        // Rellenamos con Servicios
-        data.serviciosDetalle.forEach(s => {
-            const h = s.hora.substring(0, 2) + ":00";
-            if (hoursMap[h]) hoursMap[h].servicios += Number(s.precio);
+        // 2. Rellenamos Servicios (Protección agregada: || [])
+        (data.serviciosDetalle || []).forEach((s: any) => {
+            if (s.hora) {
+                const h = s.hora.substring(0, 2) + ":00";
+                if (hoursMap[h]) hoursMap[h].servicios += Number(s.precio);
+            }
         });
 
-        // Rellenamos con Productos
-        data.ventasDetalle.forEach(v => {
-            const h = v.hora.substring(0, 2) + ":00";
-            if (hoursMap[h]) hoursMap[h].productos += Number(v.total);
+        // 3. Rellenamos Productos/Ventas (Protección agregada: || [])
+        (data.ventasDetalle || []).forEach((v: any) => {
+            if (v.hora) {
+                const h = v.hora.substring(0, 2) + ":00";
+                if (hoursMap[h]) hoursMap[h].productos += Number(v.total);
+            }
         });
 
         return Object.values(hoursMap);
@@ -77,6 +111,14 @@ const DashboardPage: NextPage = () => {
     const ingresoServicios = data?.servicios || 0;
     const ingresoProductos = (data?.productos && data.productos > 0) ? data.productos : (data?.ventasDetalle?.reduce((acc, curr) => acc + Number(curr.total), 0) || 0);
     const ingresoTotalBruto = ingresoServicios + ingresoProductos;
+
+    // --- HELPER PARA COLORES DE ESTADO ---
+    const getStatusInfo = (estatus: string) => {
+        const s = estatus?.toLowerCase() || '';
+        if (s.includes('cancel')) return { color: '#EF4444', icon: <FaExclamationCircle/> }; // Rojo
+        if (s.includes('confirm')) return { color: '#3B82F6', icon: <FaCheckCircle/> }; // Azul
+        return { color: '#D4AF37', icon: <FaClock/> }; // Dorado (Pendiente)
+    };
 
     // --- GENERACIÓN DE PDF ---
     const generarPDF = () => {
@@ -88,7 +130,6 @@ const DashboardPage: NextPage = () => {
         const subtotalFiscal = ingresoTotalBruto / (1 + tasaIVA);
         const impuestosFiscal = ingresoTotalBruto - subtotalFiscal;
 
-        // Encabezado
         doc.setFillColor(21, 25, 34); doc.rect(0, 0, 210, 45, 'F');
         doc.setTextColor(212, 175, 55); doc.setFontSize(18); doc.setFont("helvetica", "bold");
         doc.text(fiscalData.empresa.toUpperCase(), 15, 18);
@@ -99,7 +140,6 @@ const DashboardPage: NextPage = () => {
         doc.setFontSize(14); doc.text(tituloReporte, 195, 20, { align: 'right' });
         doc.setFontSize(9); doc.text(`Emisión: ${fechaImpresion.toLocaleString()}`, 195, 35, { align: 'right' });
 
-        // Resumen
         doc.setTextColor(0, 0, 0); doc.setFontSize(12); doc.text("RESUMEN CONTABLE", 15, 55);
         autoTable(doc, {
             startY: 60,
@@ -116,7 +156,6 @@ const DashboardPage: NextPage = () => {
 
         let finalY = (doc as any).lastAutoTable.finalY + 15;
 
-        // Tablas Detalle
         if (data.serviciosDetalle?.length > 0) {
             doc.text("DETALLE OPERATIVO", 15, finalY);
             autoTable(doc, {
@@ -127,7 +166,6 @@ const DashboardPage: NextPage = () => {
             finalY = (doc as any).lastAutoTable.finalY + 15;
         }
         
-        // Firmas
         if (finalY > 250) { doc.addPage(); finalY = 40; }
         doc.line(30, finalY + 30, 90, finalY + 30); doc.text("ELABORÓ", 60, finalY + 35, { align: 'center' });
         doc.line(120, finalY + 30, 180, finalY + 30); doc.text("AUTORIZÓ", 150, finalY + 35, { align: 'center' });
@@ -136,7 +174,14 @@ const DashboardPage: NextPage = () => {
         setShowPdfModal(false);
     };
 
-    if (loading) return <div style={{color:'white', padding: 50, textAlign:'center'}}>Analizando datos...</div>;
+    if (loading && !data) return <div style={{color:'white', padding: 50, textAlign:'center'}}>Analizando datos...</div>;
+
+    // --- FILTRADO DE CITAS (Regla de negocio) ---
+    // Filtramos las citas que NO estén pagadas ni completadas para mostrar solo lo pendiente/futuro.
+    const citasFuturas = data?.proximasCitas?.filter(c => {
+        const estado = c.estatus?.toLowerCase() || '';
+        return !estado.includes('pagado') && !estado.includes('completada') && !estado.includes('concluido');
+    }) || [];
 
     return (
         <>
@@ -197,7 +242,6 @@ const DashboardPage: NextPage = () => {
                     </Link>
 
                     <Link href="/insumos" style={{textDecoration:'none'}}>
-                         {/* Usamos lógica para alertar si hay insumos bajos */}
                         <KPI_Card 
                             title="Alerta Insumos" 
                             value={data?.insumosBajos?.toString() || "0"} 
@@ -208,13 +252,13 @@ const DashboardPage: NextPage = () => {
                     </Link>
                 </div>
 
-                {/* SECCIÓN PRINCIPAL: GRÁFICO COMPLEJO + TIMELINE CITAS */}
+                {/* SECCIÓN PRINCIPAL: GRÁFICO + AGENDA GLOBAL */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '20px' }}>
                     
-                    {/* 1. GRÁFICO DE TENDENCIAS (COMPLEJO PERO ENTENDIBLE) */}
+                    {/* 1. GRÁFICO DE TENDENCIAS */}
                     <div style={cardStyle}>
                         <h3 style={cardTitleStyle}>Rendimiento por Hora (Tendencia)</h3>
-                        <p style={{color:'#6B7280', fontSize:'0.85rem', marginBottom: 20}}>Analiza las horas pico de facturación (Servicios + Productos)</p>
+                        <p style={{color:'#6B7280', fontSize:'0.85rem', marginBottom: 20}}>Analiza las horas pico de facturación</p>
                         
                         <div style={{ width: '100%', height: 350 }}>
                             <ResponsiveContainer>
@@ -233,55 +277,75 @@ const DashboardPage: NextPage = () => {
                                         formatter={(value: any) => [`$${value}`, "Ventas"]}
                                     />
                                     <Legend />
-                                    {/* Barras para Servicios (Base sólida) */}
                                     <Bar dataKey="servicios" name="Ingreso Servicios" barSize={20} fill="#D4AF37" radius={[4, 4, 0, 0]} />
-                                    {/* Área para Productos (Tendencia suave encima) */}
                                     <Area type="monotone" dataKey="productos" name="Ingreso Productos" stroke="#3B82F6" fill="#3B82F6" strokeWidth={3} fillOpacity={0.2} />
                                 </ComposedChart>
                             </ResponsiveContainer>
                         </div>
                     </div>
 
-                    {/* 2. TIMELINE DE PRÓXIMAS CITAS (MEJORADO VISUALMENTE) */}
+                    {/* 2. AGENDA GLOBAL (PRÓXIMOS DÍAS) - CORREGIDO */}
                     <div style={cardStyle}>
                         <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: 20}}>
-                            <h3 style={cardTitleStyle}><FaCalendarDay style={{color: '#8B5CF6', marginRight: 10}}/> Agenda de Hoy</h3>
+                            <h3 style={cardTitleStyle}><FaCalendarDay style={{color: '#8B5CF6', marginRight: 10}}/> Próximas Citas (Agenda)</h3>
                             <Link href="/citas" style={{color:'#D4AF37', fontSize:'0.9rem', display:'flex', alignItems:'center', gap:5, textDecoration:'none'}}>
                                 Gestionar <FaArrowRight size={10}/>
                             </Link>
                         </div>
 
-                        {data?.proximasCitas && data.proximasCitas.length > 0 ? (
+                        {citasFuturas.length > 0 ? (
                             <div style={{display:'flex', flexDirection:'column', gap: 15, maxHeight: '380px', overflowY: 'auto', paddingRight: 5}}>
-                                {data.proximasCitas.map((cita, i) => (
-                                    <div key={i} style={{display:'flex', gap: 15, alignItems:'center'}}>
-                                        {/* Columna Hora */}
-                                        <div style={{display:'flex', flexDirection:'column', alignItems:'center', minWidth: 50}}>
-                                            <span style={{color:'white', fontWeight:'bold'}}>{cita.hora.slice(0,5)}</span>
-                                            <div style={{height: '100%', width: 2, background: '#374151', flex: 1, marginTop: 5}}></div>
-                                        </div>
-                                        
-                                        {/* Tarjeta Cita */}
-                                        <div style={{
-                                            background: '#111827', flex: 1, padding: '12px', borderRadius: '10px', 
-                                            borderLeft: '4px solid #D4AF37', border: '1px solid #374151',
-                                            display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-                                        }}>
-                                            <div>
-                                                <div style={{color: 'white', fontWeight: '600'}}>{cita.cliente}</div>
-                                                <div style={{color: '#9CA3AF', fontSize: '0.85rem'}}>{cita.servicio}</div>
+                                {citasFuturas.map((cita, i) => {
+                                    // Obtenemos color e icono según estado real
+                                    const statusInfo = getStatusInfo(cita.estatus);
+                                    
+                                    // Formateamos fecha corta si existe, o usamos "Hoy"
+                                    let fechaDisplay = "Hoy";
+                                    if(cita.fecha) {
+                                        const d = new Date(cita.fecha);
+                                        // Formato ej: "05 Oct"
+                                        fechaDisplay = d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' });
+                                    }
+
+                                    return (
+                                        <div key={i} style={{display:'flex', gap: 15, alignItems:'center'}}>
+                                            {/* Columna Fecha/Hora */}
+                                            <div style={{display:'flex', flexDirection:'column', alignItems:'center', minWidth: 60}}>
+                                                <span style={{color:'#9CA3AF', fontSize:'0.75rem', textTransform:'capitalize'}}>{fechaDisplay}</span>
+                                                <span style={{color:'white', fontWeight:'bold', fontSize:'0.9rem'}}>{cita.hora.slice(0,5)}</span>
+                                                <div style={{height: '100%', width: 2, background: '#374151', flex: 1, marginTop: 5}}></div>
                                             </div>
-                                            <div style={{background: '#374151', padding: '5px 8px', borderRadius: '6px', color:'#D4AF37', fontSize:'0.8rem'}}>
-                                                <FaClock /> Pendiente
+                                            
+                                            {/* Tarjeta Cita */}
+                                            <div style={{
+                                                background: '#111827', flex: 1, padding: '12px', borderRadius: '10px', 
+                                                borderLeft: `4px solid ${statusInfo.color}`, border: '1px solid #374151',
+                                                display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                                            }}>
+                                                <div>
+                                                    <div style={{color: 'white', fontWeight: '600'}}>{cita.cliente}</div>
+                                                    <div style={{color: '#9CA3AF', fontSize: '0.85rem'}}>{cita.servicio}</div>
+                                                </div>
+                                                {/* Etiqueta de Estado Real */}
+                                                <div style={{
+                                                    background: 'rgba(0,0,0,0.3)', 
+                                                    padding: '5px 8px', borderRadius: '6px', 
+                                                    color: statusInfo.color, 
+                                                    fontSize:'0.8rem',
+                                                    display:'flex', alignItems:'center', gap: 5,
+                                                    border: `1px solid ${statusInfo.color}`
+                                                }}>
+                                                    {statusInfo.icon} {cita.estatus || 'PENDIENTE'}
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         ) : (
                             <div style={{textAlign:'center', padding: 50, color: '#6B7280'}}>
-                                <FaCalendarDay size={40} style={{marginBottom: 10, opacity:0.5}}/>
-                                <p>No hay más citas programadas para hoy.</p>
+                                <FaCheckCircle size={40} style={{marginBottom: 10, opacity:0.5, color: '#10B981'}}/>
+                                <p>No tienes citas pendientes para los próximos días.</p>
                             </div>
                         )}
                     </div>

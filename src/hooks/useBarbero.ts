@@ -1,60 +1,62 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 
-// 🔒 CAMBIA ESTO CADA VEZ QUE HAGAS UN CAMBIO CRÍTICO EN LA ESTRUCTURA DE USUARIO
-const CURRENT_APP_VERSION = 'v1.0_produccion'; 
-
 export const useBarbero = () => {
-    const [barbero, setBarbero] = useState<{ id_bar: number; nom_bar: string; apell_bar?: string } | null>(null);
+    const [barbero, setBarbero] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const router = useRouter();
 
     useEffect(() => {
-        // 1. REVISIÓN DE VERSIÓN (La parte nueva)
-        const storedVersion = localStorage.getItem('app_version');
+        // 1. Verificamos si hay sesión guardada
+        const storedData = localStorage.getItem('barbero_data');
+        const token = localStorage.getItem('token');
 
-        if (storedVersion !== CURRENT_APP_VERSION) {
-            console.warn("Versión antigua detectada. Limpiando caché...");
-            // Si la versión no coincide, borramos TODO para evitar errores
-            localStorage.clear(); 
-            localStorage.setItem('app_version', CURRENT_APP_VERSION); // Guardamos la nueva
-            setBarbero(null);
+        if (!token || !storedData) {
+            // Si falta algo, mandamos al login
+            console.warn("No hay sesión válida, redirigiendo...");
+            router.push('/login');
             setLoading(false);
-            // Opcional: router.push('/'); // Si quieres forzar que vayan al login
             return;
         }
 
-        // 2. LECTURA NORMAL DE USUARIO
-        const storedUser = localStorage.getItem('usuario_activo');
-
-        if (storedUser) {
-            try {
-                const user = JSON.parse(storedUser);
-                // Validación extra: Que no sea el ID 11 prohibido o corrupto
-                if (user && user.id_bar && user.id_bar !== 11) {
-                    setBarbero(user);
-                } else {
-                    console.error("Usuario inválido o de prueba detectado.");
-                    localStorage.removeItem('usuario_activo');
-                    setBarbero(null);
-                }
-            } catch (error) {
-                console.error("Error recuperando sesión:", error);
-                localStorage.removeItem('usuario_activo');
-                setBarbero(null);
+        try {
+            // 2. Leemos los datos directamente del localStorage
+            // Ya no dependemos del servidor ni de decodificar tokens raros
+            const parsedUser = JSON.parse(storedData);
+            
+            // Aseguramos que tenga los campos mínimos para que no truene el dashboard
+            if (!parsedUser.nom_bar) {
+                // Si viene con otro nombre (ej. 'nombre'), lo ajustamos
+                parsedUser.nom_bar = parsedUser.nombre || parsedUser.name || parsedUser.email;
             }
-        } else {
-            setBarbero(null);
+            if (!parsedUser.id_bar) {
+                parsedUser.id_bar = parsedUser.id || 0;
+            }
+
+            setBarbero(parsedUser);
+            setLoading(false);
+
+        } catch (err) {
+            console.error("Error al leer datos del barbero", err);
+            setError("Los datos de sesión están corruptos. Por favor ingresa de nuevo.");
+            localStorage.removeItem('token');
+            localStorage.removeItem('barbero_data');
+            setLoading(false);
         }
-        
-        setLoading(false);
+
     }, []);
 
     const logout = () => {
-        localStorage.removeItem('usuario_activo');
+        localStorage.removeItem('token');
+        localStorage.removeItem('barbero_data'); // Borramos los datos al salir
         setBarbero(null);
-        router.push('/');
+        router.push('/login');
     };
 
-    return { barbero, loading, logout };
+    const retry = () => {
+        router.push('/login'); // En este caso, reintentar es volver a loguearse para guardar bien los datos
+    };
+
+    return { barbero, loading, error, logout, retry };
 };
