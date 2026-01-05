@@ -1,7 +1,7 @@
 // src/pages/barbero/nuevo-servicio.tsx
 
 import React, { useState, useEffect } from 'react';
-import { NextPage } from 'next';
+import { NextPage, GetServerSideProps } from 'next';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { FaCut, FaArrowLeft, FaMoneyBillWave, FaUser, FaPlus, FaTrash, FaCheckCircle } from 'react-icons/fa';
@@ -275,6 +275,13 @@ const NuevoServicioPage: NextPage = () => {
             </div>
         </>
     );
+};
+
+
+export const getServerSideProps: GetServerSideProps = async () => {
+  return {
+    props: {}, // Retornamos props vacíos para que pase el build
+  };
 };
 
 export default NuevoServicioPage;
