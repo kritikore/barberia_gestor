@@ -1,11 +1,8 @@
-// src/pages/barbero/nuevo-servicio.tsx
-
 import React, { useState, useEffect } from 'react';
 import { NextPage, GetServerSideProps } from 'next';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { FaCut, FaArrowLeft, FaMoneyBillWave, FaUser, FaPlus, FaTrash, FaCheckCircle } from 'react-icons/fa';
-import BarberLayout from '@/components/BarberLayout';
+import { FaCut, FaArrowLeft, FaUser, FaPlus, FaTrash } from 'react-icons/fa';
 import styles from '@/styles/Modal.module.css'; 
 import { sendWhatsAppReminder } from '@/utils/whatsapp';
 import CobroModal from '@/components/CobroModal'; 
@@ -13,22 +10,6 @@ import CobroModal from '@/components/CobroModal';
 interface Cliente { id_clie: number; nom_clie: string; apell_clie: string; tel_clie: string; }
 interface ServicioDB { id_serv: number; tipo: string; precio: string; }
 interface ServicioTicket { id_serv: number; nombre: string; precio: number; }
-
-// 1. Agrega este estado al inicio de tu componente
-const [enviarWhatsapp, setEnviarWhatsapp] = useState(true); // Marcado por defecto
-
-// 2. Pon esto en tu JSX, arriba del botón de "Guardar/Cobrar"
-<div style={{marginBottom: 15, display:'flex', alignItems:'center', gap: 10}}>
-    <input 
-        type="checkbox" 
-        checked={enviarWhatsapp} 
-        onChange={(e) => setEnviarWhatsapp(e.target.checked)}
-        id="checkWS"
-    />
-    <label htmlFor="checkWS" style={{color:'white', cursor:'pointer'}}>
-        Enviar recibo por WhatsApp automáticamente
-    </label>
-</div>
 
 const categoriasServicios = [
     "Corte de cabello", "Arreglo de barba y bigote", "Afeitado clásico",
@@ -40,12 +21,14 @@ const NuevoServicioPage: NextPage = () => {
     const router = useRouter();
     const { clienteId } = router.query;
 
+    // --- HOOKS (Estados) ---
+    const [enviarWhatsapp, setEnviarWhatsapp] = useState(true);
     const [clientes, setClientes] = useState<Cliente[]>([]);
     const [serviciosDB, setServiciosDB] = useState<ServicioDB[]>([]);
     
     const [selectedClient, setSelectedClient] = useState('');
-    const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]); 
-    
+    const [fecha, setFecha] = useState(''); // Se inicializa en useEffect para evitar error de hidratación
+
     const [selectedCategory, setSelectedCategory] = useState('');
     const [selectedServiceId, setSelectedServiceId] = useState('');
     const [precioActual, setPrecioActual] = useState(0);
@@ -54,7 +37,11 @@ const NuevoServicioPage: NextPage = () => {
     const [loading, setLoading] = useState(false);
     const [showCobroModal, setShowCobroModal] = useState(false);
 
+    // --- EFECTOS ---
     useEffect(() => {
+        // Inicializar fecha en el cliente
+        setFecha(new Date().toISOString().split('T')[0]);
+
         const loadData = async () => {
             try {
                 const [resCli, resServ] = await Promise.all([
@@ -69,6 +56,7 @@ const NuevoServicioPage: NextPage = () => {
         loadData();
     }, [clienteId]);
 
+    // --- LÓGICA ---
     const serviciosFiltrados = serviciosDB.filter(s => {
         if (!selectedCategory) return true;
         const cat = selectedCategory.toLowerCase();
@@ -101,7 +89,6 @@ const NuevoServicioPage: NextPage = () => {
 
     const totalTicket = ticket.reduce((sum, item) => sum + item.precio, 0);
 
-    // --- FUNCIÓN PARA ABRIR MODAL ---
     const abrirModal = (e: React.FormEvent) => {
         e.preventDefault(); 
         if (!selectedClient) return alert("Selecciona un cliente.");
@@ -110,13 +97,11 @@ const NuevoServicioPage: NextPage = () => {
         setShowCobroModal(true); 
     };
 
-    // --- FUNCIÓN PRINCIPAL DE GUARDADO (Aquí integramos los insumos) ---
     const guardarEnBaseDeDatos = async (metodoPago: string, propina: number, totalFinal: number) => {
         setLoading(true);
         setShowCobroModal(false);
 
         try {
-            // 1. Guardar el Servicio (Venta)
             const response = await fetch('/api/barbero/registrar-servicio', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -130,23 +115,19 @@ const NuevoServicioPage: NextPage = () => {
 
             if (!response.ok) throw new Error('Error al registrar');
 
-            // 🔑 2. NUEVO: DESCONTAR INSUMOS AUTOMÁTICAMENTE
-            // Intentamos obtener el ID del barbero logueado, si no existe usamos 1 como fallback
-            const userData = localStorage.getItem('userProfile');
+            const userData = localStorage.getItem('barbero_data'); // Usamos barbero_data que es lo nuevo
             const id_bar = userData ? JSON.parse(userData).id_bar : 1; 
 
-            // Llamada silenciosa a la API de insumos (no detiene el flujo si falla)
             await fetch('/api/barbero/descontar-insumos', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id_bar: id_bar })
             }).catch(err => console.error("Error descontando insumos", err));
 
-            // 3. Flujo de WhatsApp y Redirección
             const cliente = clientes.find(c => c.id_clie.toString() === selectedClient);
             const mensajeConfirm = `✅ Cobro de $${totalFinal.toFixed(2)} registrado con éxito.\n\n¿Enviar ticket por WhatsApp?`;
 
-            if (cliente && confirm(mensajeConfirm)) {
+            if (enviarWhatsapp && cliente && confirm(mensajeConfirm)) {
                 const detalles = ticket.map(t => `• ${t.nombre}`).join('\n');
                 const whatsappMsg = `💈 *The Gentleman's Cut* 💈\n\nHola ${cliente.nom_clie}!\nGracias por tu visita.\n\n✅ *Servicios:*\n${detalles}\n\n💰 Total: $${totalFinal.toFixed(2)}\n💳 Pago: ${metodoPago}\n\n¡Vuelve pronto!`;
                 sendWhatsAppReminder(cliente.tel_clie, whatsappMsg);
@@ -164,6 +145,7 @@ const NuevoServicioPage: NextPage = () => {
 
     const currentClientName = clientes.find(c => c.id_clie.toString() === selectedClient)?.nom_clie || "Cliente";
 
+    // --- RENDER (JSX) ---
     return (
         <>
             <Head><title>Nuevo Servicio - Ticket</title></Head>
@@ -181,7 +163,7 @@ const NuevoServicioPage: NextPage = () => {
                 />
             )}
 
-            <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+            <div style={{ maxWidth: '800px', margin: '0 auto', padding: '20px' }}>
                 <button onClick={() => router.back()} style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '20px'}}>
                     <FaArrowLeft /> Volver
                 </button>
@@ -262,6 +244,18 @@ const NuevoServicioPage: NextPage = () => {
                             )}
                         </div>
 
+                        <div style={{marginBottom: 15, display:'flex', alignItems:'center', gap: 10}}>
+                            <input 
+                                type="checkbox" 
+                                checked={enviarWhatsapp} 
+                                onChange={(e) => setEnviarWhatsapp(e.target.checked)}
+                                id="checkWS"
+                            />
+                            <label htmlFor="checkWS" style={{color:'white', cursor:'pointer'}}>
+                                Enviar recibo por WhatsApp automáticamente
+                            </label>
+                        </div>
+
                         <button 
                             type="submit" 
                             className={styles.submitButton} 
@@ -277,12 +271,11 @@ const NuevoServicioPage: NextPage = () => {
     );
 };
 
-
+// 👇 ESTA ES LA FUNCIÓN CLAVE PARA VERCEL (TIENE QUE ESTAR AFUERA) 👇
 export const getServerSideProps: GetServerSideProps = async () => {
-  return {
-    props: {}, // Retornamos props vacíos para que pase el build
-  };
+    return {
+        props: {}, 
+    };
 };
 
 export default NuevoServicioPage;
-
