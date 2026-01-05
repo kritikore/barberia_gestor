@@ -93,7 +93,7 @@ const ClientesPage: NextPage = () => {
                                                 {avatarSrc ? <img src={avatarSrc} style={{width: '100%', height: '100%', objectFit: 'cover'}} /> : <FaUser size={20} color="#666" />}
                                             </div>
                                         </td>
-                                        <td style={{fontWeight:'bold', color:'white'}}>{cli.nom_clie} {cli.apell_clie}</td>
+                                        <td style={{fontWeight:'bold', color:'black'}}>{cli.nom_clie} {cli.apell_clie}</td>
                                         <td style={{color:'#ccc'}}><FaPhone size={12} style={{marginRight:5}}/>{cli.tel_clie}</td>
                                         <td>
                                             {cli.nom_bar ? (

@@ -65,49 +65,51 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ onClose, onSuccess, service
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setLoading(true);
-        setError(null);
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
 
-        // 🔑 Determina el nombre final del servicio
-        const nombreServicioFinal = formData.tipo === 'Otro' ? formData.tipoManual.trim() : formData.tipo;
+    // Determina el nombre final del servicio
+    const nombreServicioFinal = formData.tipo === 'Otro' ? formData.tipoManual.trim() : formData.tipo;
 
-        if (!nombreServicioFinal || !formData.precio) {
-            setError('El Nombre del Servicio y el Precio son obligatorios.');
-            setLoading(false);
-            return;
-        }
-        
-        const dataToSend = {
-            tipo: nombreServicioFinal,
-            precio: formData.precio,
-            descripcion: formData.descripcion
-        };
-
-        try {
-            const url = isEditing ? `/api/servicios/${serviceToEdit.id_serv}` : '/api/servicios';
-            const method = isEditing ? 'PUT' : 'POST';
-
-            const response = await fetch(url, {
-                method: method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(dataToSend), 
-            });
-
-            if (!response.ok) {
-                const res = await response.json();
-                throw new Error(res.message || 'Error al guardar el servicio');
-            }
-
-            setLoading(false);
-            onSuccess(); 
-            onClose(); 
-
-        } catch (err: any) {
-            setError(err.message);
-            setLoading(false);
-        }
+    // Validación local antes de enviar
+    if (!nombreServicioFinal || !formData.precio) {
+        setError('El Nombre del Servicio y el Precio son obligatorios.');
+        setLoading(false);
+        return;
+    }
+    
+    const dataToSend = {
+        tipo: nombreServicioFinal,
+        precio: parseFloat(formData.precio.toString()), // Aseguramos que sea número
+        descripcion: formData.descripcion || ''
     };
+
+    try {
+        const url = isEditing ? `/api/servicios/${serviceToEdit?.id_serv}` : '/api/servicios';
+        const method = isEditing ? 'PUT' : 'POST';
+
+        const response = await fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(dataToSend), 
+        });
+
+        const res = await response.json();
+
+        if (!response.ok) {
+            throw new Error(res.message || 'Error al guardar el servicio');
+        }
+
+        setLoading(false);
+        onSuccess(); 
+        onClose(); 
+
+    } catch (err: any) {
+        setError(err.message);
+        setLoading(false);
+    }
+};
 
     return (
         <div className={styles.modalBackdrop}>

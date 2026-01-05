@@ -102,13 +102,13 @@ const PersonalPage: NextPage = () => {
                                     return (
                                         <tr key={p.id_bar} style={{ opacity: esActivo ? 1 : 0.6, background: esActivo ? 'transparent' : 'rgba(0,0,0,0.3)' }}>
                                             
-                                            <td style={{fontWeight: 'bold', color: 'white', fontSize:'1.1em'}}>
+                                            <td style={{fontWeight: 'bold', color: 'black', fontSize:'1.1em'}}>
                                                 {p.nom_bar} {p.apell_bar}
                                             </td>
 
-                                            <td style={{color: '#ccc'}}>
-                                                <div style={{fontWeight:'bold', color:'white'}}>{p.email}</div>
-                                                <div style={{fontSize:'0.85em', color:'#888', display:'flex', alignItems:'center', gap:5}}>
+                                            <td style={{color: '#000000ff'}}>
+                                                <div style={{fontWeight:'bold', color:'black'}}>{p.email}</div>
+                                                <div style={{fontSize:'0.85em', color:'#000000ff', display:'flex', alignItems:'center', gap:5}}>
                                                     <FaPhone size={10}/> {p.tel_bar || 'Sin teléfono'}
                                                 </div>
                                             </td>

@@ -1,106 +1,65 @@
-// src/pages/api/inventario/[id].ts
-
-// 🔑 CORRECCIÓN: Importaciones faltantes
 import { NextApiRequest, NextApiResponse } from 'next';
 import { db } from '@/lib/db'; 
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-    // Obtenemos el ID del producto desde la URL (ej: /api/inventario/2)
     const { id } = req.query;
 
     if (!id) {
-        return res.status(400).json({ message: 'ID de producto no proporcionado' });
+        return res.status(400).json({ message: 'ID de servicio no proporcionado' });
     }
 
-    // --- 1. ELIMINAR PRODUCTO (DELETE) ---
+    // --- 1. ELIMINAR SERVICIO (DELETE) ---
     if (req.method === 'DELETE') {
         try {
-            // Importante: Primero eliminamos las referencias en 'detalle_venta'
-            await db.query('DELETE FROM detalle_venta WHERE ID_PROD = $1', [id]);
-            
-            // Ahora eliminamos el producto principal
-            const result = await db.query('DELETE FROM PRODUCTO WHERE id_prod = $1 RETURNING *', [id]);
+            // Se usa el nombre de tabla corregido: "servicio"
+            const result = await db.query('DELETE FROM servicio WHERE id_serv = $1 RETURNING *', [id]);
             
             if (result.rowCount === 0) {
-                return res.status(404).json({ message: 'Producto no encontrado' });
+                return res.status(404).json({ message: 'Servicio no encontrado' });
             }
             
-            return res.status(200).json({ message: 'Producto eliminado', deletedProduct: result.rows[0] });
+            return res.status(200).json({ message: 'Servicio eliminado' });
         
         } catch (error: any) {
-            console.error("Error en API al eliminar producto:", error);
-            if (error.code === '23503') { // Error de Foreign Key
-                 return res.status(409).json({ message: 'Error: El producto no se puede eliminar porque está referenciado en otras tablas.' });
+            console.error("Error al eliminar servicio:", error);
+            // Si el error es de llave foránea (23503), es porque el servicio ya se usó en un ticket
+            if (error.code === '23503') { 
+                 return res.status(409).json({ message: 'No se puede eliminar: este servicio ya está registrado en ventas.' });
             }
-            return res.status(500).json({ message: 'Error interno del servidor', error: error.message });
+            return res.status(500).json({ message: 'Error interno del servidor' });
         }
     }
 
-    // --- 2. ACTUALIZAR STOCK (PATCH) ---
-    if (req.method === 'PATCH') {
-        try {
-            const { newStock } = req.body; 
-
-            if (newStock === undefined) {
-                return res.status(400).json({ message: 'Nueva cantidad de stock no proporcionada' });
-            }
-            
-            const stockNum = parseInt(newStock, 10);
-            if (isNaN(stockNum) || stockNum < 0) {
-                return res.status(400).json({ message: 'El stock debe ser un número positivo' });
-            }
-
-            const query = `
-                UPDATE PRODUCTO
-                SET STOCK = $1
-                WHERE id_prod = $2
-                RETURNING *;
-            `;
-            const result = await db.query(query, [stockNum, id]);
-
-            if (result.rowCount === 0) {
-                return res.status(404).json({ message: 'Producto no encontrado' });
-            }
-
-            return res.status(200).json(result.rows[0]);
-
-        } catch (error: any) {
-             console.error("Error en API al actualizar stock:", error);
-            return res.status(500).json({ message: 'Error interno del servidor', error: error.message });
-        }
-    }
-
-    // --- 3. EDITAR PRODUCTO COMPLETO (PUT) ---
+    // --- 2. EDITAR SERVICIO (PUT) ---
     if (req.method === 'PUT') {
         try {
-            const { nom_prod, marc_prod, PRECIO_PROD, STOCK } = req.body;
+            const { tipo, precio, descripcion } = req.body;
 
-            if (!nom_prod || !marc_prod || !PRECIO_PROD || STOCK === undefined) {
-                return res.status(400).json({ message: 'Todos los campos son obligatorios.' });
+            if (!tipo || precio === undefined) {
+                return res.status(400).json({ message: 'El nombre y el precio son obligatorios.' });
             }
             
             const query = `
-                UPDATE PRODUCTO
-                SET nom_prod = $1,
-                    marc_prod = $2,
-                    PRECIO_PROD = $3,
-                    STOCK = $4
-                WHERE id_prod = $5
+                UPDATE servicio
+                SET tipo = $1,
+                    precio = $2,
+                    descripcion = $3
+                WHERE id_serv = $4
                 RETURNING *;
             `;
-            const values = [nom_prod, marc_prod, parseFloat(PRECIO_PROD), parseInt(STOCK, 10), id];
+            const values = [tipo, parseFloat(precio), descripcion || '', id];
             
             const result = await db.query(query, values);
             
             if (result.rowCount === 0) {
-                return res.status(404).json({ message: 'Producto no encontrado' });
+                return res.status(404).json({ message: 'Servicio no encontrado' });
             }
 
             return res.status(200).json(result.rows[0]);
 
         } catch (error: any) {
-            console.error("Error en API al editar producto:", error);
-            return res.status(500).json({ message: 'Error interno del servidor', error: error.message });
+            console.error("Error al editar servicio:", error);
+            return res.status(500).json({ message: 'Error al actualizar la base de datos' });
         }
     }
 
